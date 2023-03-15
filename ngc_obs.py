@@ -26,8 +26,8 @@ m = ephem.Moon() #make Moon
 
 NGC = [] #start list to hold NGC objects for each observable
 for x in range(len(in_obj)):
-	ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[x][2], in_obj[x][3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
-	ngc_xephem_format = in_obj[x][0] + ',' + in_obj[x][1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[x][4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
+	ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[x][2], in_obj[x][3], epoch = ephem.J2000), epoch = ephem.J2000);print(in_obj[x][2], in_obj[x][3]) #converting to equatorial
+	ngc_xephem_format = in_obj[x][0] + ',' + in_obj[x][1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[x][4];print(ngc_xephem_format);
 	NGC.append(ephem.readdb(ngc_xephem_format)) #create ncg object
 
 days = 3 #integration period in days
@@ -46,12 +46,12 @@ times = np.empty(int(days * 24 / step_hours)) #times
 dates = [] #dates
 
 prev_alt = np.empty(len(in_obj))
+
 for x in range(int(days * 24 / step_hours)):
 	for i in range(len(in_obj)):
-		NGC[i].compute(obs) #compute observables for obs location time and date
-		azis[i][x] = float(repr(NGC[i].az)) * 180. / math.pi #add azimuths, altitudes to arrays
+		NGC[i].compute(obs)
+		azis[i][x] = float(repr(NGC[i].az)) * 180. / math.pi
 		alts[i][x] = float(repr(NGC[i].alt)) * 180. / math.pi
-	
 	s.compute(obs)
 	altSun[x] = float(repr(s.alt)) * 180 / math.pi
 	m.compute(obs)
