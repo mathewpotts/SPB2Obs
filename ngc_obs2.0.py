@@ -10,6 +10,7 @@ from gcn_kafka import Consumer
 import tkinter as tk
 from PIL import Image, ImageTk
 import time
+import threading
 
 # Read in args
 def read_in_args():
@@ -18,6 +19,29 @@ def read_in_args():
     parser.add_argument('-loc', metavar='locFile',action='store',help='')
     args = parser.parse_args()
     return args
+
+def gcn_alerts(): # wait for a gcn alerts        # Connect as a consumer.
+        # Warning: don't share the client secret with others.
+        consumer = Consumer(client_id='7l6biv6qbbgut8rllm527eas0e',
+                            client_secret='12ev0n7c81vj0g019f5amdlhjt64vcrecnuadr9nfekr6bikc8ln')
+        
+        # Subscribe to topics and receive alerts
+        consumer.subscribe(['gcn.classic.text.FERMI_GBM_FIN_POS',
+                    'gcn.classic.text.FERMI_GBM_FLT_POS',
+                    'gcn.classic.text.FERMI_GBM_GND_POS',
+                    'gcn.classic.text.ICECUBE_ASTROTRACK_BRONZE',
+                    'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
+                    'gcn.classic.text.ICECUBE_CASCADE',
+                    'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
+        while True:
+            for message in consumer.consume(timeout=1):
+                value = message.value()
+                print(value)
+
+def GUI(sources):
+    root = tk.Tk()
+    app = SourcesGUI(root,list(sources))
+    root.mainloop()
 
 # Define class to observer
 class SPB2Obs:
@@ -31,25 +55,83 @@ class SPB2Obs:
         self.obs = ephem.Observer() #make observer
         self.gpsLoc = self.read_file(args.loc) #read in gps location
         self.set_observer(self.gpsLoc) #set observer based on location
-        
-        # Compute when these objects are in the FoV at location/altitude (without masks)
+
+        # Compute objects at init location/altitude (without masks)
         for i in range(len(self.in_obj)):
             self.ephem_objarray[i].compute(self.obs)
-
-        # Init various arrays used in class
-        self.azis = np.zeros([len(self.in_obj),int(self.days * 24 / self.step_hours)]) #azimuths for observables
-        self.alts = np.zeros([len(self.in_obj),int(self.days * 24 / self.step_hours)]) #altitudes for observables
-        self.altSun = np.zeros(int(self.days * 24 / self.step_hours))
-        self.phaseMoon = np.zeros(int(self.days * 24 / self.step_hours))
-        self.altMoon = np.zeros(int(self.days * 24 / self.step_hours))
-        self.times = np.empty(int(self.days * 24 / self.step_hours)) #times
-        self.dates = [] #dates
+        #print(self.obs.next_setting(self.ephem_objarray[0]),self.obs.next_rising(self.ephem_objarray[0]))
 
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
-        self.mask_moon_and_sun() #generate masks
+        #self.mask_moon_and_sun() #generate masks
+        self.new()
+
+    def new(self):
+        for i in range(len(self.in_obj)):
+            try:
+                rise = self.obs.next_rising(self.ephem_objarray[i])
+                sett = self.obs.next_setting(self.ephem_objarray[i])
+                if rise > sett: # if source is setting
+                    self.obs.horizon = float(self.obs.horizon) + (math.pi/180)*2.5 # set to upper fov
+                    upperfov = self.obs.next_setting(self.ephem_objarray[i])
+                    print(self.obs)
+                    print(i,upperfov)
+                    self.obs.horizon = float(self.obs.horizon) + (math.pi/180)*-7.5 # set to lower fov
+                    lowerfov = self.obs.next_setting(self.ephem_objarray[i])
+                    print(self.obs)
+                    print(i,lowerfov)
+                    self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation)))) #reset to horizon
+                    self.fill_arrays(i,upperfov,lowerfov)
+                else: # if source is rising
+                    self.obs.horizon = float(self.obs.horizon) + (math.pi/180)*-5.0 # set to upper fov
+                    lowerfov = self.obs.next_rising(self.ephem_objarray[i])
+                    print(self.obs)
+                    print(i,lowerfov)
+                    self.obs.horizon = float(self.obs.horizon) + (math.pi/180)*7.5 # set to lower fov
+                    upperfov = self.obs.next_rising(self.ephem_objarray[i])
+                    print(self.obs)
+                    print(i,upperfov)
+                    self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation)))) #reset to horizon
+                    self.fill_arrays(i,lowerfov,upperfov)
+            except ephem.AlwaysUpError:
+                print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(self.in_obj[i].split(',')[0]))
+            except ephem.NeverUpError:
+                print("Warning: Object of interest {0} is never up, and is out of the FoV.".format(self.in_obj[i].split(',')[0]))
+
+    def fill_arrays(self, i, time1, time2):
+        dt = (time2-time1)*86400 # crossing time in seconds
+        self.obs.date = time1
+        print(self.obs)
         
+        # Init various arrays
+        self.azis = np.zeros([len(self.in_obj),int(dt)]) #azimuths for observables
+        self.alts = np.zeros([len(self.in_obj),int(dt)]) #altitudes for observables
+        self.altmask = np.array(np.zeros(len(self.in_obj)), dtype=bool)
+        self.altSun = np.zeros(int(dt))
+        self.phaseMoon = np.zeros(int(dt))
+        self.altMoon = np.zeros(int(dt))
+        self.times = np.empty(int(dt)) #times
+        self.dates = [] #dates
+        
+        for x in range(int(dt)):
+            #for i in range(len(self.in_obj)):
+            self.ephem_objarray[i].compute(self.obs) #compute observables for obs location time and date
+            self.azis[i][x] = float(self.ephem_objarray[i].az) * 180. / math.pi #add azimuths, altitudes to arrays
+            self.alts[i][x] = float(self.ephem_objarray[i].alt) * 180. / math.pi
+            #print(self.obs.date,i,self.azis[i][x],self.alts[i][x])
+            self.s.compute(self.obs)
+            self.altSun[x] = float(repr(self.s.alt)) * 180 / math.pi
+            self.m.compute(self.obs)
+            self.phaseMoon[x] = float(repr(self.m.moon_phase))
+            self.altMoon[x] = float(repr(self.m.alt)) * 180 / math.pi
+            self.times[x] = self.obs.date.tuple()[2]*24 + self.obs.date.tuple()[3] + self.obs.date.tuple()[4]/60 + self.obs.date.tuple()[5]/3600 #add time in hours to array
+            self.dates.append(str(self.obs.date))
+            self.obs.date = self.obs.date + ephem.second #update date
+
+        self.altmask[i] = True
+        self.sunmask = self.altSun <= ((float(self.obs.horizon) * 180 / math.pi) - 15.0) #set condition that sun is
+        self.moonmask = self.phaseMoon <= 30.0
 
     def set_observer(self, locArray):
         ls = locArray[0].split(',')
@@ -57,7 +139,9 @@ class SPB2Obs:
         self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = float(ls[3])
-        self.obs.horizon = (np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3]))) #horizon calculated from elevation of obs
+        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) #horizon calculated from elevation of obs
+        self.obs.pressure = 0 # turn off refraction
+        print(self.obs)
 
     def read_file(self, infile):
         # Read input file
@@ -70,10 +154,9 @@ class SPB2Obs:
         NGC = [] #start list to hold NGC objects for each observable
         for x in range(len(self.in_obj)):
             in_obj = self.in_obj[x].split(',')
-            print(float(in_obj[2]), float(in_obj[3]))
             ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
             ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
-            print(ngc_xephem_format)
+            #print(ngc_xephem_format)
             NGC.append(ephem.readdb(ngc_xephem_format)) #create ncg object
         return NGC
     
@@ -83,6 +166,7 @@ class SPB2Obs:
                 self.ephem_objarray[i].compute(self.obs) #compute observables for obs location time and date
                 self.azis[i][x] = float(self.ephem_objarray[i].az) * 180. / math.pi #add azimuths, altitudes to arrays
                 self.alts[i][x] = float(self.ephem_objarray[i].alt) * 180. / math.pi
+                #print(self.obs.date,i,self.azis[i][x],self.alts[i][x])
             self.s.compute(self.obs)
             self.altSun[x] = float(repr(self.s.alt)) * 180 / math.pi
             self.m.compute(self.obs)
@@ -92,7 +176,8 @@ class SPB2Obs:
             self.dates.append(str(self.obs.date))
             self.obs.date = self.obs.date + self.step_hours * ephem.hour #update date
 
-        self.altmask = (self.alts >= -5.0) & (self.alts <= 2.5)
+        self.altmask = (self.alts >= (float(self.obs.horizon) * 180 / math.pi)-5.0) & (self.alts <= (float(self.obs.horizon) * 180 / math.pi)+2.5)
+        #print(self.altmask)
         self.sunmask = self.altSun <= ((float(self.obs.horizon) * 180 / math.pi) - 15.0) #set condition that sun is 
         self.moonmask = self.phaseMoon <= 30.0
     
@@ -107,11 +192,18 @@ class SPB2Obs:
             f.write('ALTITUDE (DEG), AZIMUTH (DEG), DATE (Y/M/D), TIME (UTC), CROSSED HORIZON?\n')
             if len((self.altmask[i]&self.sunmask&self.moonmask).nonzero()[0]) != 0:
                 previndex = (self.altmask[i]&self.sunmask&self.moonmask).nonzero()[0][0]
+            else:
+                if not self.altmask[i]:
+                    f.write('Warning: Not within the elevations of interest.\n')
+                if not self.sunmask[i]:
+                    f.write('Warning: Sun is above horizon!\n')
+                if not self.moonmask[i]:
+                    f.write('Warning: Moon is bright\n')
             for j in (self.altmask[i]&self.sunmask&self.moonmask).nonzero()[0]:
                 if j == previndex + 1:
-                    f.write(str(self.alts[i][j]) + ',' + str(self.azis[i][j]) + ',' + self.dates[j] + 'N\n')
+                    f.write(str(self.alts[i][j]) + ',' + str(self.azis[i][j]) + ',' + self.dates[j] + ' N\n')
                 else:
-                    f.write(str(self.alts[i][j]) + ',' + str(self.azis[i][j]) + ',' + self.dates[j] + 'Y\n')
+                    f.write(str(self.alts[i][j]) + ',' + str(self.azis[i][j]) + ',' + self.dates[j] + ' Y\n')
                 previndex = j
             f.close()
                             
@@ -123,24 +215,12 @@ class SPB2Obs:
             plt.legend()
             plt.ylim((0,360))
             plt.savefig('temp.png',dpi=1200)
-    
-    def gcn_alerts(): # wait for a gcn alerts        # Connect as a consumer.
-        # Warning: don't share the client secret with others.
-        consumer = Consumer(client_id='7l6biv6qbbgut8rllm527eas0e',
-                            client_secret='12ev0n7c81vj0g019f5amdlhjt64vcrecnuadr9nfekr6bikc8ln')
-        
-        # Subscribe to topics and receive alerts
-        consumer.subscribe([])
-        while True:
-            for message in consumer.consume(timeout=1):
-                value = message.value()
-                print(value)
 
 
 class SourcesGUI:
-    def __init__(self, master):
+    def __init__(self, master, sourcelist):
         self.master = master
-        self.sources = ["Source 1", "Source 2", "Source 3", "Source 4"]
+        self.sources = sourcelist
         self.master.title("Sources")
         
         # Create a label for the current time
@@ -217,7 +297,7 @@ class SourcesGUI:
         image_label.pack()
 
         # Load the temporary image and resize it to fit the new window
-        image = Image.open("temp1.png")
+        image = Image.open("temp.png")
         image = image.resize((700, 500))
         photo = ImageTk.PhotoImage(image)
 
@@ -228,12 +308,11 @@ class SourcesGUI:
 
 if __name__ == '__main__':
     args = read_in_args() # read in user input arguments
-    #observer = SPB2Obs(args)
+    observer = SPB2Obs(args)
     #observer.print_files()
-    #observer.gcn_alerts()
+    sources = ["Source 1","Source 2","Source 3"]
 
-
-    sources = ["Source 1", "Source 2", "Source 3", "Source 4"]
-    root = tk.Tk()
-    app = SourcesGUI(root)
-    root.mainloop()
+    #b = threading.Thread(name='gcn_alerts', target = gcn_alerts) # run GCN alerts in background
+    f = threading.Thread(name='GUI', target = GUI, args = {tuple(sources)}) # run GUI in foreground
+    #b.start()
+    f.start()
