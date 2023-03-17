@@ -12,6 +12,8 @@ from PIL import Image, ImageTk
 import time
 import threading
 
+TESTING = True
+
 # Read in args
 def read_in_args():
     parser = argparse.ArgumentParser(description = '')
@@ -67,6 +69,7 @@ class SPB2Obs:
         sources = []
         self.obs.date = utctime
         for i in range(len(self.ephem_objarray)):
+            #print(self.ephem_objarray[i])
             sources.append(self.objs_in_fov(utctime, self.ephem_objarray[i]))
 
         sources = [s for s in sources if s is not None] # filter list
@@ -83,12 +86,12 @@ class SPB2Obs:
                 lowerfov = self.obs.next_setting(ephem_obj)
                 self.obs.horizon = self.default_horizon #reset to horizon
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                gui_str = "{0}    {1}    {2}".format(ephem_obj.name,az,alt)
-                print(self.obs.date,upperfov, lowerfov, mask)
-                print(gui_str)
-                return gui_str
-                if self.obs.date >= upperfov and self.obs.date <= lowerfov and mask:
-                    gui_str = "{0}    {1}    {2}".format(ephem_obj.name,az,alt)
+                if TESTING:
+                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    print(gui_str)
+                    return gui_str
+                elif self.obs.date >= upperfov and self.obs.date <= lowerfov and mask:
+                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
             else: # if source is rising firsts
                 self.obs.horizon = self.upperfov # set to upper fov
@@ -96,10 +99,14 @@ class SPB2Obs:
                 self.obs.horizon = self.lowerfov # set to lower fov
                 upperfov = self.obs.next_rising(ephem_obj)
                 self.obs.horizon = self.default_horizon #reset to horizon
-                az,alt,mask = self.mask(ephem_obj, utctime)
-                print(self.obs.date, lowerfov, upperfov, mask)
+                az,alt,mask = self.masks(ephem_obj, utctime)
+                #print(self.obs.date, lowerfov, upperfov, mask)
+                if TESTING:
+                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    print(gui_str)
+                    return gui_str
                 if self.obs.date >= upperfov and self.obs.date <= lowerfov and mask:
-                    gui_str = "{0}    {1}    {2}".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
@@ -117,7 +124,7 @@ class SPB2Obs:
 
         sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - 15.0) #set condition that sun is
         moonmask = phaseMoon <= 30.0
-        print(sunmask,moonmask)
+        #print(sunmask,moonmask)
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
@@ -154,7 +161,10 @@ class SourcesGUI:
         # Get initial source list
         self.observer = SPB2Obs(args)
         
-        self.sources = ["  Object         Azimuth         Altitude","Source 2","Source 3"]
+        self.sources = [
+            ["Object", "Azimuth", "Altitude"],
+            ["------", "-------", "--------"]
+        ]
         self.master.title("SPB2Obs")
         
         # Create a label for the current time
@@ -162,9 +172,10 @@ class SourcesGUI:
         self.time_label.pack(side=tk.TOP)
 
         # Create a listbox widget and populate it with the sources
-        self.listbox = tk.Listbox(self.master)
-        for source in self.sources:
-            self.listbox.insert(tk.END, source)
+        self.listbox = tk.Listbox(self.master,font="TkFixedFont")
+        for sourcerow in self.sources:
+            row = "{: ^20} {: ^20} {: ^20}".format(*sourcerow)
+            self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
         self.scrollbar = tk.Scrollbar(self.master)
@@ -205,10 +216,12 @@ class SourcesGUI:
 
         # Update sources list
         self.sources = sources
-        print(sources)
-        self.listbox.delete(1,self.listbox.size()) # Clear old list
+        self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            self.listbox.insert(tk.END, source)
+            row = "{: ^20} {: ^20} {: ^20}".format(*source.split(','))
+            if TESTING:
+                print(row)
+            self.listbox.insert(tk.END, row)
 
     def check_alert(self):
         # Simulate an alert
