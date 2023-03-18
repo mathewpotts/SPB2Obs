@@ -56,11 +56,13 @@ class SPB2Obs:
         # remove objects that will never be in FoV
         filter_list = []
         for i,s in enumerate(sources):
-            if s is not None:
+            if s in self.ephem_objarray:
                 filter_list.append(i)
-        self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i in filter_list]
+        self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i not in filter_list]
+        if TESTING:
+            print(self.ephem_objarray)
         
-        sources = [s for s in sources if s is not None] # filter list
+        sources = [s for s in sources if type(s) == str ] # filter list
         return sources
 
     def objs_in_fov(self, utctime, ephem_obj):
@@ -93,8 +95,10 @@ class SPB2Obs:
                     return gui_str
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
+            return ephem_obj
         except ephem.NeverUpError:
             print("Warning: Object of interest {0} is never up, and is out of the FoV.".format(ephem_obj))
+            return ephem_obj
 
     def masks(self, ephem_obj, utctime):
         self.obs.date = utctime # make sure obs is at current time
@@ -107,11 +111,11 @@ class SPB2Obs:
 
         sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - 15.0) #set condition that sun is
         moonmask = phaseMoon <= 30.0
-        #print(sunmask,moonmask)
-        if not sunmask:
-            print("Sun is up.")
-        if not moonmask:
-            print("Moon phase is higher.")
+        if TESTING:
+            if not sunmask:
+                print(altSun,"Warning: Sun is up!")
+            if not moonmask:
+                print(altMoon,"Moon phase is higher.")
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
