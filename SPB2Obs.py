@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Authors: Mathew Potts, Jordan Bogdan, Andrew Wang
+
 #Import libs
 import ephem
 import math
@@ -12,44 +14,24 @@ from PIL import Image, ImageTk
 import time
 import threading
 
-TESTING = True
-
 # Read in args
 def read_in_args():
-    parser = argparse.ArgumentParser(description = '')
-    parser.add_argument('-obj', metavar='objFile',action='store',help='')
-    parser.add_argument('-loc', metavar='locFile',action='store',help='')
+    parser = argparse.ArgumentParser(description = 'SPB2Obs shows Objects of Interest (OoI) in the FoV of the CT telescope displaying the azimuth and altitude of those objects. SPB2Obs incorporates live alerts of Gamma-Ray Bursts (GRBs) from the General Coordinates Network (GCN).')
+    parser.add_argument('-obj', metavar='objFile',action='store',help='Path to file containing OoI.')
+    parser.add_argument('-loc', metavar='locFile',action='store',help='Path to file containing the current GPS location of SPB2 and time.')
+    parser.add_argument('-test', action='store_true',default=False,help='Debugging option.')
     args = parser.parse_args()
     return args
 
-def gcn_alerts(): # wait for a gcn alerts        # Connect as a consumer.
-        # Warning: don't share the client secret with others.
-        consumer = Consumer(client_id='7l6biv6qbbgut8rllm527eas0e',
-                            client_secret='12ev0n7c81vj0g019f5amdlhjt64vcrecnuadr9nfekr6bikc8ln')
-        
-        # Subscribe to topics and receive alerts
-        consumer.subscribe(['gcn.classic.text.FERMI_GBM_FIN_POS',
-                    'gcn.classic.text.FERMI_GBM_FLT_POS',
-                    'gcn.classic.text.FERMI_GBM_GND_POS',
-                    'gcn.classic.text.ICECUBE_ASTROTRACK_BRONZE',
-                    'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
-                    'gcn.classic.text.ICECUBE_CASCADE',
-                    'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
-        while True:
-            for message in consumer.consume(timeout=1):
-                value = message.value()
-                print(value)
-
-def GUI(sources):
+def GUI(args):
     root = tk.Tk()
-    app = SourcesGUI(root,list(sources))
+    root.geometry("800x200") # set default window size
+    app = SourcesGUI(root,args)
     root.mainloop()
 
 # Define class to observer
 class SPB2Obs:
     def __init__(self,args):
-        self.days = 3 #integration period in days
-        self.step_hours = 0.08333333333 #step time in hours
         self.in_obj = self.read_file(args.obj) # read infile objects
         self.ephem_objarray = self.ephem_object_array() # Create Ephem objects
 
@@ -69,9 +51,15 @@ class SPB2Obs:
         sources = []
         self.obs.date = utctime
         for i in range(len(self.ephem_objarray)):
-            #print(self.ephem_objarray[i])
             sources.append(self.objs_in_fov(utctime, self.ephem_objarray[i]))
 
+        # remove objects that will never be in FoV
+        filter_list = []
+        for i,s in enumerate(sources):
+            if s is not None:
+                filter_list.append(i)
+        self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i in filter_list]
+        
         sources = [s for s in sources if s is not None] # filter list
         return sources
 
@@ -81,31 +69,26 @@ class SPB2Obs:
             sett = self.obs.next_setting(ephem_obj)
             if rise > sett: # if source is setting first
                 self.obs.horizon = self.upperfov # set to upper fov
-                upperfov = self.obs.next_setting(ephem_obj)
                 self.obs.horizon = self.lowerfov # set to lower fov
-                lowerfov = self.obs.next_setting(ephem_obj)
                 self.obs.horizon = self.default_horizon #reset to horizon
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     print(gui_str)
                     return gui_str
-                elif self.obs.date >= upperfov and self.obs.date <= lowerfov and mask:
+                elif alt <= self.upperfov and alt >= self.lowerfov and mask:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
             else: # if source is rising firsts
                 self.obs.horizon = self.upperfov # set to upper fov
-                lowerfov = self.obs.next_rising(ephem_obj)
                 self.obs.horizon = self.lowerfov # set to lower fov
-                upperfov = self.obs.next_rising(ephem_obj)
                 self.obs.horizon = self.default_horizon #reset to horizon
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                #print(self.obs.date, lowerfov, upperfov, mask)
                 if TESTING:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     print(gui_str)
                     return gui_str
-                if self.obs.date >= upperfov and self.obs.date <= lowerfov and mask:
+                elif alt <= self.upperfov and alt >= self.lowerfov and mask:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
         except ephem.AlwaysUpError:
@@ -125,6 +108,10 @@ class SPB2Obs:
         sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - 15.0) #set condition that sun is
         moonmask = phaseMoon <= 30.0
         #print(sunmask,moonmask)
+        if not sunmask:
+            print("Sun is up.")
+        if not moonmask:
+            print("Moon phase is higher.")
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
@@ -150,9 +137,30 @@ class SPB2Obs:
             in_obj = self.in_obj[x].split(',')
             ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
             ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
-            #print(ngc_xephem_format)
             NGC.append(ephem.readdb(ngc_xephem_format)) #create ncg object
         return NGC
+
+    def gcn_alerts(self):
+        # wait for a gcn alerts
+        # Connect as a consumer.
+        # Warning: don't share the client secret with others.
+        consumer = Consumer(client_id='7l6biv6qbbgut8rllm527eas0e',
+                            client_secret='12ev0n7c81vj0g019f5amdlhjt64vcrecnuadr9nfekr6bikc8ln')
+        
+        # Subscribe to topics and receive alerts
+        consumer.subscribe(['gcn.classic.text.FERMI_GBM_FIN_POS',
+                            'gcn.classic.text.FERMI_GBM_FLT_POS',
+                            'gcn.classic.text.FERMI_GBM_GND_POS',
+                            'gcn.classic.text.ICECUBE_ASTROTRACK_BRONZE',
+                            'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
+                            'gcn.classic.text.ICECUBE_CASCADE',
+                            'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
+        
+        while True:
+            with open('GCNalerts.txt','a') as f:
+                for message in consumer.consume(timeout=1):
+                    value = message.value()
+                    print(value,file=f)
 
 class SourcesGUI:
     def __init__(self, master,args):
@@ -160,6 +168,10 @@ class SourcesGUI:
 
         # Get initial source list
         self.observer = SPB2Obs(args)
+
+        # Start GCN alerts check in the background
+        b = threading.Thread(name='gcn_alerts', target = self.observer.gcn_alerts) # run GCN alerts in background
+        b.start()
         
         self.sources = [
             ["Object", "Azimuth", "Altitude"],
@@ -174,7 +186,7 @@ class SourcesGUI:
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
-            row = "{: ^20} {: ^20} {: ^20}".format(*sourcerow)
+            row = "{: >20} {: >20} {: >20}".format(*sourcerow)
             self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
@@ -218,7 +230,7 @@ class SourcesGUI:
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            row = "{: ^20} {: ^20} {: ^20}".format(*source.split(','))
+            row = "{: >20} {: >20} {: >20}".format(*source.split(','))
             if TESTING:
                 print(row)
             self.listbox.insert(tk.END, row)
@@ -269,12 +281,10 @@ class SourcesGUI:
 
 if __name__ == '__main__':
     args = read_in_args() # read in user input arguments
-
-    # Start GCN alerts check in the background
-    b = threading.Thread(name='gcn_alerts', target = gcn_alerts) # run GCN alerts in background
-    b.start()
+    if args.test:
+        TESTING = True
+    else:
+        TESTING = False
 
     # Open the GUI
-    root = tk.Tk()
-    app = SourcesGUI(root,args)
-    root.mainloop()
+    GUI(args)
