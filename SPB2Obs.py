@@ -13,6 +13,7 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import time
 import threading
+import re
 
 # Read in args
 def read_in_args():
@@ -139,12 +140,51 @@ class SPB2Obs:
         NGC = [] #start list to hold NGC objects for each observable
         for x in range(len(self.in_obj)):
             in_obj = self.in_obj[x].split(',')
-            ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
-            ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
-            NGC.append(ephem.readdb(ngc_xephem_format)) #create ncg object
+            NGC.append(self.create_ephem_object(in_obj))
         return NGC
 
+    def create_ephem_object(self,in_obj):
+        ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
+        ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
+        return ephem.readdb(ngc_xephem_format)
+
     def gcn_alerts(self):
+        # Typical GCN alert
+        #b'TITLE:           GCN/FERMI NOTICE\n
+        #NOTICE_DATE:     Sat 11 Mar 23 02:01:13 UT\n
+        #NOTICE_TYPE:     Fermi-GBM Test Position\n
+        #RECORD_NUM:      1\n
+        #TRIGGER_NUM:     99999\n
+        #GRB_RA:          180.000d {+12h 00m 00s} (J2000),\n
+        #180.297d {+12h 01m 11s} (current),\n
+        #179.361d {+11h 57m 27s} (1950)\n
+        #GRB_DEC:         -35.000d {-35d 00\' 00"} (J2000),\n
+        #         -35.129d {-35d 07\' 44"} (current),\n
+        #-34.722d {-34d 43\' 17"} (1950)\n
+        #GRB_ERROR:       5.80 [deg radius, statistical plus systematic]\n
+        #GRB_INTEN:       1000 [cnts/sec]\n
+        #DATA_SIGNIF:     11.78 [sigma]\n
+        #INTEG_TIME:      0.064 [sec]\n
+        #GRB_DATE:        20014 TJD;    70 DOY;   23/03/11\n
+        #GRB_TIME:        7265.00 SOD {02:01:05.00} UT\n
+        #GRB_PHI:           0.00 [deg]\n
+        #GRB_THETA:         0.00 [deg]\n
+        #DATA_TIME_SCALE: 0.0000 [sec]\n
+        #HARD_RATIO:      3.18\n
+        #LOC_ALGORITHM:   1 (version number of)\n
+        #MOST_LIKELY:      67%  Below horizon\n
+        #2nd_MOST_LIKELY:  32%  Local Particles\n
+        #DETECTORS:       1,1,1, 0,0,0, 0,0,0, 0,0,0, 0,0,\n
+        #SUN_POSTN:       351.03d {+23h 24m 07s}   -3.87d {-03d 52\' 01"}\n
+        #SUN_DIST:        140.04 [deg]   Sun_angle= 11.4 [hr] (West of Sun)\n
+        #MOON_POSTN:      208.95d {+13h 55m 49s}  -11.47d {-11d 28\' 29"}\n
+        #MOON_DIST:        35.13 [deg]\n
+        #MOON_ILLUM:      88 [%]\n
+        #GAL_COORDS:      291.16, 26.69 [deg] galactic lon,lat of the burst (or transient)\n
+        #ECL_COORDS:      195.56,-31.75 [deg] ecliptic lon,lat of the bust (or transient)\n
+        #COMMENTS:        Fermi-GBM TEST Coordinates.  \n
+        #COMMENTS:        This Notice was ground-generated -- not flight-generated.  \n'
+        # I assume that all GCN alerts are of similar format
         # wait for a gcn alerts
         # Connect as a consumer.
         # Warning: don't share the client secret with others.
@@ -163,8 +203,21 @@ class SPB2Obs:
         while True:
             with open('GCNalerts.txt','a') as f:
                 for message in consumer.consume(timeout=1):
-                    value = message.value()
-                    print(value,file=f)
+                    value = message.value().decode('ASCII')
+                    print(value,file=f) # print alert to file
+                    print('--------',file=f) # separate alerts
+
+                    # create a ephem object
+                    alert = value.split('\n')
+                    name  = re.search(r'TITLE:\s*(.*)',alert[0]).group(1) # name of object
+                    type_  = "f|G"                                        # dummy type
+                    ra    = re.search(r'\d+.\d+', alert[5]).group()       # find J2000 RA
+                    dec   = re.search(r'\d+.\d+', alert[8]).group()       # find J2000 DEC
+                    mag   = "1.0"                                         # dummy magnitude
+                    in_obj = [name,type_,ra,dec,mag]
+                    obj = create_ephem_object(in_obj)
+                    self.ephem_objarray.append(obj)
+                    
 
 class SourcesGUI:
     def __init__(self, master,args):
