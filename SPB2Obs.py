@@ -39,7 +39,7 @@ class SPB2Obs:
         # Set init observer
         self.obs = ephem.Observer() #make observer
         self.gpsLoc = self.read_file(args.loc) #read in gps location
-        self.set_observer(self.gpsLoc) #set observer based on location 
+        self.set_observer(self.gpsLoc) #set observer based on location
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
@@ -62,7 +62,9 @@ class SPB2Obs:
         self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i not in filter_list]
         if TESTING:
             print(self.ephem_objarray)
-        
+            sources.append("SUN,{0},{1}".format(self.s.az,self.s.alt))
+            sources.append("MOON,{0},{1}".format(self.m.az,self.m.alt))
+
         sources = [s for s in sources if type(s) == str ] # filter list
         return sources
 
@@ -136,7 +138,7 @@ class SPB2Obs:
         f.close()
         return array
 
-    def ephem_object_array(self):                
+    def ephem_object_array(self):
         NGC = [] #start list to hold NGC objects for each observable
         for x in range(len(self.in_obj)):
             in_obj = self.in_obj[x].split(',')
@@ -147,6 +149,15 @@ class SPB2Obs:
         ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
         ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
         return ephem.readdb(ngc_xephem_format)
+
+    def check_sun_and_moon(self):
+        sun_rise = self.obs.next_rising(self.s)
+        sun_set = self.obs.next_setting(self.s)
+        moon_rise = self.obs.next_rising(self.m)
+        moon_set = self.obs.next_setting(self.m)
+        moon_phase = self.m.moon_phase
+        return sun_rise, sun_set, moon_rise, moon_set, moon_phase
+
 
     def gcn_alerts(self):
         # Typical GCN alert
@@ -190,7 +201,7 @@ class SPB2Obs:
         # Warning: don't share the client secret with others.
         consumer = Consumer(client_id='7l6biv6qbbgut8rllm527eas0e',
                             client_secret='12ev0n7c81vj0g019f5amdlhjt64vcrecnuadr9nfekr6bikc8ln')
-        
+
         # Subscribe to topics and receive alerts
         consumer.subscribe(['gcn.classic.text.FERMI_GBM_FIN_POS',
                             'gcn.classic.text.FERMI_GBM_FLT_POS',
@@ -199,7 +210,7 @@ class SPB2Obs:
                             'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
                             'gcn.classic.text.ICECUBE_CASCADE',
                             'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
-        
+
         while True:
             with open('GCNalerts.txt','a') as f:
                 for message in consumer.consume(timeout=1):
@@ -217,7 +228,7 @@ class SPB2Obs:
                     in_obj = [name,type_,ra,dec,mag]
                     obj = create_ephem_object(in_obj)
                     self.ephem_objarray.append(obj)
-                    
+
 
 class SourcesGUI:
     def __init__(self, master,args):
@@ -229,16 +240,24 @@ class SourcesGUI:
         # Start GCN alerts check in the background
         b = threading.Thread(name='gcn_alerts', target = self.observer.gcn_alerts) # run GCN alerts in background
         b.start()
-        
+
         self.sources = [
             ["Object", "Azimuth", "Altitude"],
             ["------", "-------", "--------"]
         ]
         self.master.title("SPB2Obs")
-        
+
         # Create a label for the current time
         self.time_label = tk.Label(self.master, text="", font=("Arial", 12))
         self.time_label.pack(side=tk.TOP)
+
+        # Create a label for the Sun rise and set times
+        self.sun_schedule = tk.Label(self.master, text="", font=("Arial",12))
+        self.sun_schedule.pack(side=tk.TOP, anchor="w")
+
+        # Create a label for the Moon rise and set times
+        self.moon_schedule = tk.Label(self.master, text="", font=("Arial",12))
+        self.moon_schedule.pack(side=tk.TOP, anchor="w")
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
@@ -267,7 +286,7 @@ class SourcesGUI:
         current_time = time.strftime("%Y/%m/%d %H:%M:%S",time.gmtime()) # in UTC
 
         # Update the time label
-        self.time_label.config(text="Current Time: " + current_time)
+        self.time_label.config(text="Current Time: " + current_time + "\n")
 
         # Check for an alert every 10 seconds
         #if int(time.strftime("%S")) % 10 == 0:
@@ -275,6 +294,9 @@ class SourcesGUI:
 
         # Check for sources in the FoV
         self.check_sources(current_time)
+
+        # Check the rise and set times of the Sun and Moon
+        self.check_sun_and_moon(current_time)
 
         # Schedule the next update in 1 second
         self.master.after(1000, self.update_time)
@@ -297,7 +319,7 @@ class SourcesGUI:
         alert = None
         if int(time.strftime("%M")) % 2 == 1:
             alert = "Alert: odd minute!"
-            
+
         # If there is an alert, display it in a new window and add a source to the list
         if alert:
             # Create a new window
@@ -307,15 +329,29 @@ class SourcesGUI:
             # Create a label to display the alert message
             alert_label = tk.Label(top, text=alert, font=("Arial", 14))
             alert_label.pack(side=tk.TOP)
-            
+
             # Create an acknowledgement button
             ack_button = tk.Button(top, text="Acknowledge", command=top.destroy)
             ack_button.pack(side=tk.BOTTOM)
-            
+
             # Add a new source to the list and update the listbox
             new_source = "New Source"
             self.sources.append(new_source)
             self.listbox.insert(tk.END, new_source)
+
+    def check_sun_and_moon(self, current_time):
+        current_time = ephem.Date(current_time)
+        sun_rise,sun_set,moon_rise,moon_set,moon_phase = self.observer.check_sun_and_moon()
+        sun_str = "Sun - \t Rise: {0} \t Set: {1}".format(sun_rise, sun_set)
+        if current_time < sun_set or current_time > sun_rise:
+            self.sun_schedule.config(text=sun_str, fg='#f00')
+        else:
+            self.sun_schedule.config(text=sun_str)
+        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Phase: {2:.2f}".format(moon_rise, moon_set, moon_phase)
+        if current_time < moon_set or current_time > sun_rise:
+            self.moon_schedule.config(text=moon_str, fg='#f00')
+        else:
+            self.moon_schedule.config(text=moon_str)
 
     def open_window(self):
         # Create a new window
