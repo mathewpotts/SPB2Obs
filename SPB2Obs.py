@@ -26,7 +26,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("800x200") # set default window size
+    root.geometry("920x200") # set default window size
     app = SourcesGUI(root,args)
     root.mainloop()
 
@@ -62,8 +62,6 @@ class SPB2Obs:
         self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i not in filter_list]
         if TESTING:
             print(self.ephem_objarray)
-            sources.append("SUN,{0},{1}".format(self.s.az,self.s.alt))
-            sources.append("MOON,{0},{1}".format(self.m.az,self.m.alt))
 
         sources = [s for s in sources if type(s) == str ] # filter list
         return sources
@@ -150,13 +148,22 @@ class SPB2Obs:
         ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
         return ephem.readdb(ngc_xephem_format)
 
-    def check_sun_and_moon(self):
+    def check_sun_and_moon(self, utctime):
+        self.obs.date = utctime
         sun_rise = self.obs.next_rising(self.s)
         sun_set = self.obs.next_setting(self.s)
+        self.s.compute(self.obs)
+        sun_azi = self.s.az
+        sun_alt = self.s.alt
+        sun = [sun_rise,sun_set,sun_azi,sun_alt]
         moon_rise = self.obs.next_rising(self.m)
         moon_set = self.obs.next_setting(self.m)
+        self.m.compute(self.obs)
+        moon_azi = self.m.az
+        moon_alt = self.m.alt
         moon_phase = self.m.moon_phase
-        return sun_rise, sun_set, moon_rise, moon_set, moon_phase
+        moon = [moon_rise,moon_set,moon_azi,moon_alt,moon_phase]
+        return sun,moon
 
 
     def gcn_alerts(self):
@@ -340,18 +347,11 @@ class SourcesGUI:
             self.listbox.insert(tk.END, new_source)
 
     def check_sun_and_moon(self, current_time):
-        current_time = ephem.Date(current_time)
-        sun_rise,sun_set,moon_rise,moon_set,moon_phase = self.observer.check_sun_and_moon()
-        sun_str = "Sun - \t Rise: {0} \t Set: {1}".format(sun_rise, sun_set)
-        if current_time < sun_set or current_time > sun_rise:
-            self.sun_schedule.config(text=sun_str, fg='#f00')
-        else:
-            self.sun_schedule.config(text=sun_str)
-        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Phase: {2:.2f}".format(moon_rise, moon_set, moon_phase)
-        if current_time < moon_set or current_time > sun_rise:
-            self.moon_schedule.config(text=moon_str, fg='#f00')
-        else:
-            self.moon_schedule.config(text=moon_str)
+        sun,moon = self.observer.check_sun_and_moon(current_time)
+        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
+        self.sun_schedule.config(text=sun_str)
+        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}".format(moon[0],moon[1],moon[2],moon[3],moon[4])
+        self.moon_schedule.config(text=moon_str)
 
     def open_window(self):
         # Create a new window
