@@ -35,7 +35,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("920x200") # set default window size
+    root.geometry("920x400") # set default window size
     app = SourcesGUI(root,args)
     root.mainloop()
 
@@ -56,6 +56,10 @@ class SPB2Obs:
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
+
+    @property
+    def gps_loc(self):
+        return self.gpsLoc[0].split(',')
 
     def check_fov(self, utctime):
         sources = []
@@ -269,6 +273,11 @@ class SourcesGUI:
         # Create a label for the current time
         self.time_label = tk.Label(self.master, text="", font=("Arial", 12))
         self.time_label.pack(side=tk.TOP)
+
+        # Create a label for the gps location
+        gps_loc = "Location -    Last Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3}\n".format(*self.observer.gps_loc)
+        self.gps_loc = tk.Label(self.master, text=gps_loc, font=("Arial",12))
+        self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the Sun rise and set times
         self.sun_schedule = tk.Label(self.master, text="", font=("Arial",12))
