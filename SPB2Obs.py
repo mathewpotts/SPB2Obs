@@ -12,8 +12,17 @@ from gcn_kafka import Consumer
 import tkinter as tk
 from PIL import Image, ImageTk
 import time
+import calendar
 import threading
 import re
+
+# Define Mask parameters
+SUN_OFFSET   = 15.0
+MOON_PERCENT = 30.0
+
+# Init alert flags for moon/sun
+SUN_FLAG  = False
+MOON_FLAG = False
 
 # Read in args
 def read_in_args():
@@ -71,9 +80,6 @@ class SPB2Obs:
             rise = self.obs.next_rising(ephem_obj)
             sett = self.obs.next_setting(ephem_obj)
             if rise > sett: # if source is setting first
-                self.obs.horizon = self.upperfov # set to upper fov
-                self.obs.horizon = self.lowerfov # set to lower fov
-                self.obs.horizon = self.default_horizon #reset to horizon
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
@@ -82,10 +88,7 @@ class SPB2Obs:
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
-            else: # if source is rising firsts
-                self.obs.horizon = self.upperfov # set to upper fov
-                self.obs.horizon = self.lowerfov # set to lower fov
-                self.obs.horizon = self.default_horizon #reset to horizon
+            else: # if source is rising firstsn
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
@@ -102,30 +105,39 @@ class SPB2Obs:
             return ephem_obj
 
     def masks(self, ephem_obj, utctime):
+        global SUN_FLAG
+        global MOON_FLAG
         self.obs.date = utctime # make sure obs is at current time
-        ephem_obj.compute(self.obs)
-        self.s.compute(self.obs)
+        ephem_obj.compute(self.obs) # compute location of object
+        self.s.compute(self.obs) # compute location of sun relative to observer
         altSun = float(repr(self.s.alt)) * 180 / math.pi
-        self.m.compute(self.obs)
+        self.m.compute(self.obs) #compute locatoin of moon relative to observer
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
 
-        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - 15.0) #set condition that sun is
-        moonmask = phaseMoon <= 30.0
+        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) #set condition that sun is
+        moonmask = phaseMoon <= MOON_PERCENT
         if TESTING:
             if not sunmask:
                 print(altSun,"Warning: Sun is up!")
             if not moonmask:
                 print(altMoon,"Moon phase is higher.")
+            SUN_FLAG = True if not sunmask else False
+            MOON_FLAG = True if not moonmask else False
+            print(SUN_FLAG,MOON_FLAG)
+        else:
+            SUN_FLAG = True if not sunmask else False
+            MOON_FLAG = True if not moonmask else False
+
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
         ls = locArray[0].split(',')
-        self.obs.date = ls[0] #UTC time
+        self.obs.date = ls[0] # UTC time
         self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = float(ls[3])
-        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) #horizon calculated from elevation of obs
+        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) # horizon calculated from elevation of obs
         self.obs.pressure = 0 # turn off refraction
         print(self.obs)
 
@@ -149,22 +161,22 @@ class SPB2Obs:
         return ephem.readdb(ngc_xephem_format)
 
     def check_sun_and_moon(self, utctime):
-        self.obs.date = utctime
-        sun_rise = self.obs.next_rising(self.s)
-        sun_set = self.obs.next_setting(self.s)
-        self.s.compute(self.obs)
-        sun_azi = self.s.az
-        sun_alt = self.s.alt
-        sun = [sun_rise,sun_set,sun_azi,sun_alt]
-        moon_rise = self.obs.next_rising(self.m)
-        moon_set = self.obs.next_setting(self.m)
-        self.m.compute(self.obs)
-        moon_azi = self.m.az
-        moon_alt = self.m.alt
-        moon_phase = self.m.moon_phase
-        moon = [moon_rise,moon_set,moon_azi,moon_alt,moon_phase]
-        return sun,moon
+        self.obs.date = utctime # make sure obs is at current time
 
+        # Checking sun position
+        self.obs.horizon = (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) # define horizon for the sun calculation
+        sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
+        sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
+        self.s.compute(self.obs) # compute the location of the sun relative to observer
+        sun = [sun_rise,sun_set,self.s.az,self.s.alt]
+
+        # Checking moon position
+        self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
+        moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
+        moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
+        self.m.compute(self.obs) # compute the location of the moon relative to observer
+        moon = [moon_rise,moon_set,self.m.az,self.m.alt,self.m.moon_phase]
+        return sun,moon
 
     def gcn_alerts(self):
         # Typical GCN alert
@@ -290,14 +302,15 @@ class SourcesGUI:
 
     def update_time(self):
         # Get the current time and format it as a string
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S",time.gmtime()) # in UTC
+        #new_time = time.gmtime(calendar.timegm(time.gmtime()) + 3350)
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "\n")
 
         # Check for an alert every 10 seconds
         #if int(time.strftime("%S")) % 10 == 0:
-        #    self.check_alert()
+        self.check_alert(current_time)
 
         # Check for sources in the FoV
         self.check_sources(current_time)
@@ -321,37 +334,56 @@ class SourcesGUI:
                 print(row)
             self.listbox.insert(tk.END, row)
 
-    def check_alert(self):
+    def check_alert(self, current_time):
         # Simulate an alert
-        alert = None
-        if int(time.strftime("%M")) % 2 == 1:
-            alert = "Alert: odd minute!"
+        sun_alert = None
+        moon_alert = None
 
-        # If there is an alert, display it in a new window and add a source to the list
-        if alert:
-            # Create a new window
-            top = tk.Toplevel(self.master)
-            top.title("Alert!")
+        sun,moon = self.observer.check_sun_and_moon(current_time)
+        current_time = str(ephem.Date(current_time))
+        if current_time == str(sun[0]):
+            sun_alert = "Alert: Sun is rising over the limb!"
+        elif current_time == str(sun[1]):
+            sun_alert = "Alert: Sun is setting over the limb!"
+        elif current_time == str(moon[0]):
+            moon_alert = "Alert: Moon is rising over the limb!"
+        elif current_time == str(moon[1]):
+            moon_alert = "Alert: Moon is setting over the limb!"
+        if sun_alert:
+            self.make_alert_win(sun_alert)
+        if moon_alert:
+            self.make_alert_win(moon_alert)
 
-            # Create a label to display the alert message
-            alert_label = tk.Label(top, text=alert, font=("Arial", 14))
-            alert_label.pack(side=tk.TOP)
+    def change_color(self, object, color):
+        object.config(fg= "{0}".format(color))
 
-            # Create an acknowledgement button
-            ack_button = tk.Button(top, text="Acknowledge", command=top.destroy)
-            ack_button.pack(side=tk.BOTTOM)
+    def make_alert_win(self, alert_txt): # If there is an alert, display it in a new window and add a source to the list
+        # Create a new window
+        top = tk.Toplevel(self.master)
+        top.title("Alert!")
 
-            # Add a new source to the list and update the listbox
-            new_source = "New Source"
-            self.sources.append(new_source)
-            self.listbox.insert(tk.END, new_source)
+        # Create a label to display the alert message
+        alert_label = tk.Label(top, text=alert_txt, font=("Arial", 14))
+        alert_label.pack(side=tk.TOP)
+
+        # Create an acknowledgement button
+        ack_button = tk.Button(top, text="Acknowledge", command=top.destroy)
+        ack_button.pack(side=tk.BOTTOM)
 
     def check_sun_and_moon(self, current_time):
         sun,moon = self.observer.check_sun_and_moon(current_time)
         sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
         self.sun_schedule.config(text=sun_str)
-        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}".format(moon[0],moon[1],moon[2],moon[3],moon[4])
+        if SUN_FLAG:
+            self.change_color(self.sun_schedule, "red")
+        else:
+            self.change_color(self.sun_schedule, "black")
+        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}%".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
         self.moon_schedule.config(text=moon_str)
+        if MOON_FLAG:
+            self.change_color(self.moon_schedule, "red")
+        else:
+            self.change_color(self.moon_schedule, "black")
 
     def open_window(self):
         # Create a new window
