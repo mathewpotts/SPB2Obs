@@ -15,6 +15,8 @@ import time
 import calendar
 import threading
 import re
+import requests
+from bs4 import BeautifulSoup
 
 # Define Mask parameters
 SUN_OFFSET   = 15.0
@@ -53,13 +55,60 @@ class SPB2Obs:
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
 
+        # Flight location Equatorial
+        self.url = "https://www.csbf.nasa.gov/map/balloon10/flight728NT.htm"
+
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
 
+    def update_gpsLoc(self):
+        response = requests.get(self.url)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            rows = soup.find_all('tr')
+
+            # extract payload time, latitude, and longitude from the second row
+            data_row = rows[0]
+            payload_time = list(reversed(data_row.find_all('center')[1].get_text().strip().split('Z  ')))
+            payload_time = '20'+payload_time[0].split('/')[2]+'/'+payload_time[0].split('/')[0]+'/'+payload_time[0].split('/')[1]+' '+payload_time[1]
+            latitude = data_row.find_all('center')[2].get_text().strip().split('  ')[1]
+            longitude = data_row.find_all('center')[3].get_text().strip().split('  ')[1]
+            height = data_row.find_all('center')[4].get_text().strip().split('  ')[1]
+            wind = data_row.find_all('center')[5].get_text().strip()
+
+            # Lat/Long string conversion
+            latitude = self.lat_long_convert(latitude, 1)
+            longitude = self.lat_long_convert(longitude, 0)
+
+            # Update observer
+            locArray = [payload_time,latitude,longitude,height]
+            self.set_observer(locArray)
+
+            # print the extracted date
+            if TESTING:
+                print("Payload time:", payload_time)
+                print("Latitude:", latitude)
+                print("Longitude:", longitude)
+                print("Height:", height)
+                print("Wind:", wind)
+
+        else:
+            print("Failed to retrieve webpage")
+
+    def lat_long_convert(self, string, negFlag):
+        # Extract numerical values as strings
+        nums_str = re.findall(r'\d+(?:\.\d+)?', string)
+
+        # Convert strings to floats and store in a list
+        nums = [float(num_str) for num_str in nums_str]
+        value = nums[0] + nums[1]/60
+        return str(-1*value) if negFlag else str(value)
+
     @property
     def gps_loc(self):
-        return self.gpsLoc[0].split(',')
+        return [self.obs.date,self.obs.lat,self.obs.long,self.obs.elevation]
 
     def check_fov(self, utctime):
         sources = []
@@ -136,9 +185,11 @@ class SPB2Obs:
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
-        ls = locArray[0].split(',')
-        self.obs.date = ls[0] # UTC time
-        self.obs.lat = ls[1]
+        print(locArray)
+        ls = locArray[0].split(',') if len(locArray) == 1 else locArray
+        if len(locArray) == 1:
+            self.obs.date = ls[0] # UTC time
+            self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = float(ls[3])
         self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) # horizon calculated from elevation of obs
@@ -318,7 +369,11 @@ class SourcesGUI:
         self.time_label.config(text="Current Time: " + current_time + "\n")
 
         # Check for an alert every 10 seconds
-        #if int(time.strftime("%S")) % 10 == 0:
+        if int(time.strftime("%S")) % 10 == 0:
+            b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc) # run GCN alerts in background
+            b.start()
+            #self.observer.update_gpsLoc()
+
         self.check_alert(current_time)
 
         # Check for sources in the FoV
@@ -327,8 +382,15 @@ class SourcesGUI:
         # Check the rise and set times of the Sun and Moon
         self.check_sun_and_moon(current_time)
 
+        # Update the gps location of payload label
+        self.update_gpsLoc()
+
         # Schedule the next update in 1 second
         self.master.after(1000, self.update_time)
+
+    def update_gpsLoc(self):
+        gps_loc = "Location -    Last Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f}\n".format(*self.observer.gps_loc)
+        self.gps_loc.config(text=gps_loc)
 
     def check_sources(self, current_time):
         # Check if sources are in the fov or close to it
