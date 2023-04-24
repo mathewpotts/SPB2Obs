@@ -141,7 +141,7 @@ class SPB2Obs:
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
                     return gui_str
-            else: # if source is rising firstsn
+            else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
                     gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
@@ -168,7 +168,7 @@ class SPB2Obs:
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
 
-        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) #set condition that sun is
+        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) #set condition for sun
         moonmask = phaseMoon <= MOON_PERCENT
         if TESTING:
             if not sunmask:
@@ -347,7 +347,7 @@ class SourcesGUI:
         self.time_label.pack(side=tk.TOP)
 
         # Create a label for the gps location
-        gps_loc = "Location -    Last Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3}\n".format(*self.observer.gps_loc)
+        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3}\n".format(*self.observer.gps_loc)
         self.gps_loc = tk.Label(self.master, text=gps_loc, font=("Arial",12))
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
@@ -389,11 +389,10 @@ class SourcesGUI:
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "\n")
 
-        # Check for an alert every 10 seconds
-        if int(time.strftime("%S")) % 10 == 0:
+        # Check for an alert every 60 seconds
+        if int(time.strftime("%S")) == 0:
             b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc) # run GCN alerts in background
             b.start()
-            #self.observer.update_gpsLoc()
 
         self.check_alert(current_time)
 
