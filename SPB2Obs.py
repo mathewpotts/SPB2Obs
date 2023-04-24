@@ -118,6 +118,19 @@ class SPB2Obs:
     def gps_loc(self):
         return [self.obs.date,self.obs.lat,self.obs.long,self.obs.elevation]
 
+    @property
+    def horizon(self):
+        default_horizon = self.rad2degHMS(self.default_horizon)
+        upperFoV = self.rad2degHMS(self.upperfov)
+        lowerFoV = self.rad2degHMS(self.lowerfov)
+        return [default_horizon, upperFoV, lowerFoV]
+
+    def rad2degHMS(self, alpha):
+        D = int(alpha * (180/math.pi))
+        M = int((alpha * (180/math.pi) - D) * 60)
+        S = ((alpha * (180/math.pi) - D) * 60 - M) * 60
+        return "{0}:{1}:{2:.2f}".format(D,M,S)
+
     def check_fov(self, utctime):
         sources = []
         self.obs.date = utctime
@@ -363,6 +376,11 @@ class SourcesGUI:
         self.gps_loc = tk.Label(self.master, text=gps_loc, font=("Arial",12))
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
+        # Create a label for the horizon location
+        horizon = "Horizon -   Limb: {0}         Upper FoV: {1}         Lower FoV: {2}\n".format(*self.observer.horizon)
+        self.horizon = tk.Label(self.master, text=horizon, font=("Arial",12))
+        self.horizon.pack(side=tk.TOP, anchor="w")
+
         # Create a label for the Sun rise and set times
         self.sun_schedule = tk.Label(self.master, text="", font=("Arial",12))
         self.sun_schedule.pack(side=tk.TOP, anchor="w")
@@ -417,8 +435,15 @@ class SourcesGUI:
         # Update the gps location of payload label
         self.update_gpsLoc()
 
+        # Update the horizons
+        self.update_horizons()
+
         # Schedule the next update in 1 second
         self.master.after(1000, self.update_time)
+
+    def update_horizons(self):
+        horizon = "Horizon -   Limb: {0}         Upper FoV: {1}         Lower FoV: {2}\n".format(*self.observer.horizon)
+        self.horizon.config(text=horizon)
 
     def update_gpsLoc(self):
         gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f}\n".format(*self.observer.gps_loc)
