@@ -409,7 +409,7 @@ class SourcesGUI:
         self.master.after(1000, self.update_time)
 
     def update_gpsLoc(self):
-        gps_loc = "Location -    Last Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f}\n".format(*self.observer.gps_loc)
+        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f}\n".format(*self.observer.gps_loc)
         self.gps_loc.config(text=gps_loc)
 
     def check_sources(self, current_time):
