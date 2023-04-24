@@ -51,6 +51,8 @@ class SPB2Obs:
         self.obs = ephem.Observer() #make observer
         self.gpsLoc = self.read_file(args.loc) #read in gps location
         self.set_observer(self.gpsLoc) #set observer based on location
+
+        # Init horizons, later it is updated by the horizons function
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
@@ -61,6 +63,11 @@ class SPB2Obs:
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
+
+    def horizons(self, elevation):
+        self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(elevation))))
+        self.upperfov = self.default_horizon + (math.pi/180)*2.5
+        self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
 
     def update_gpsLoc(self):
         response = requests.get(self.url)
@@ -192,7 +199,7 @@ class SPB2Obs:
         self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = float(ls[3])
-        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) # horizon calculated from elevation of obs
+        self.horizons(float(ls[3]))
         self.obs.pressure = 0 # turn off refraction
         print(self.obs)
 
@@ -220,7 +227,9 @@ class SPB2Obs:
 
         # Checking sun position
         sun = []
-        self.obs.horizon = (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) # define horizon for the sun calculation
+        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))- (math.pi/180)*SUN_OFFSET # define horizon for the sun calculation
+        print("horizon", self.obs.horizon)
+        print(self.obs)
         try:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
@@ -237,7 +246,7 @@ class SPB2Obs:
 
         # Checking moon position
         moon = []
-        self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
+        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation)))) # reset horizon back to default for moon calculation
         try:
             moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
             moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
