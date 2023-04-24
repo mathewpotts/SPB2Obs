@@ -66,6 +66,7 @@ class SPB2Obs:
 
     def horizons(self, elevation):
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(elevation))))
+        self.obs.horizon = self.default_horizon
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
 
@@ -228,8 +229,8 @@ class SPB2Obs:
         # Checking sun position
         sun = []
         self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))- (math.pi/180)*SUN_OFFSET # define horizon for the sun calculation
-        print("horizon", self.obs.horizon)
-        print(self.obs)
+        if TESTING:
+            print('sun',self.obs)
         try:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
@@ -246,7 +247,9 @@ class SPB2Obs:
 
         # Checking moon position
         moon = []
-        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation)))) # reset horizon back to default for moon calculation
+        self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
+        if TESTING:
+            print('moon',self.obs)
         try:
             moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
             moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
