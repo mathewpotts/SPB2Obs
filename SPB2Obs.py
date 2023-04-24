@@ -6,7 +6,7 @@
 import ephem
 import math
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import argparse
 from gcn_kafka import Consumer
 import tkinter as tk
@@ -164,7 +164,7 @@ class SPB2Obs:
         ephem_obj.compute(self.obs) # compute location of object
         self.s.compute(self.obs) # compute location of sun relative to observer
         altSun = float(repr(self.s.alt)) * 180 / math.pi
-        self.m.compute(self.obs) #compute locatoin of moon relative to observer
+        self.m.compute(self.obs) #compute location of moon relative to observer
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
 
@@ -189,7 +189,7 @@ class SPB2Obs:
         ls = locArray[0].split(',') if len(locArray) == 1 else locArray
         if len(locArray) == 1:
             self.obs.date = ls[0] # UTC time
-            self.obs.lat = ls[1]
+        self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = float(ls[3])
         self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(ls[3])))) # horizon calculated from elevation of obs
@@ -219,18 +219,39 @@ class SPB2Obs:
         self.obs.date = utctime # make sure obs is at current time
 
         # Checking sun position
+        sun = []
         self.obs.horizon = (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) # define horizon for the sun calculation
-        sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
-        sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
+        try:
+            sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
+            sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
+        except ephem.AlwaysUpError:
+            print("Warning: Sun is always up!")
+            sun_rise = 'N/A\t\t'
+            sun_set = 'N/A\t\t'
+        except ephem.NeverUpError:
+            print("Warning: Sun is never up!")
+            sun_rise = 'N/A\t\t'
+            sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
         sun = [sun_rise,sun_set,self.s.az,self.s.alt]
 
         # Checking moon position
+        moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
-        moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
-        moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
+        try:
+            moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
+            moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
+        except ephem.AlwaysUpError:
+            print("Warning: Moon is always up!")
+            moon_rise = 'N/A\t\t'
+            moon_set = 'N/A\t\t'
+        except ephem.NeverUpError:
+            print("Warning: Moon is never up!")
+            moon_rise = 'N/A\t\t'
+            moon_set = 'N/A\t\t'
         self.m.compute(self.obs) # compute the location of the moon relative to observer
         moon = [moon_rise,moon_set,self.m.az,self.m.alt,self.m.moon_phase]
+
         return sun,moon
 
     def gcn_alerts(self):
