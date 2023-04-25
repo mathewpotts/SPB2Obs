@@ -18,6 +18,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
+
 # Define Mask parameters
 SUN_OFFSET   = 15.0
 MOON_PERCENT = 30.0
@@ -25,6 +26,9 @@ MOON_PERCENT = 30.0
 # Init alert flags for moon/sun
 SUN_FLAG  = False
 MOON_FLAG = False
+
+# Allows the use of greek letters
+
 
 # Read in args
 def read_in_args():
@@ -123,9 +127,9 @@ class SPB2Obs:
 
     @property
     def horizon(self):
-        default_horizon = self.rad2degHMS(self.default_horizon)
-        upperFoV = self.rad2degHMS(self.upperfov)
-        lowerFoV = self.rad2degHMS(self.lowerfov)
+        default_horizon = self.default_horizon * (180/math.pi)
+        upperFoV = self.upperfov * (180/math.pi)
+        lowerFoV = self.lowerfov * (180/math.pi)
         return [default_horizon, upperFoV, lowerFoV]
 
     def rad2degHMS(self, alpha):
@@ -366,8 +370,8 @@ class SAM:
         b.start()
 
         self.sources = [
-            ["Object", "Azimuth", "Altitude"],
-            ["------", "-------", "--------"]
+            ["Object", "Azimuth", "Altitude","Enters FoV","Exits FoV"],
+            ["------", "-------", "--------","--------","--------"]
         ]
         self.master.title("Situational Awareness Monitor (SAM)")
 
@@ -385,7 +389,7 @@ class SAM:
         self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
-        horizon = "Horizon -   Limb: {0}         Upper FoV: {1}         Lower FoV: {2}\n".format(*self.observer.horizon)
+        horizon = "Horizon -   Limb: {0:.4f}\u00b0         Upper FoV: {1:.4f}\u00b0         Lower FoV: {2:.4f}\u00b0\n".format(*self.observer.horizon)
         self.horizon = tk.Label(self.master, text=horizon, font=("Arial",12))
         self.horizon.pack(side=tk.TOP, anchor="w")
 
@@ -393,9 +397,17 @@ class SAM:
         self.sun_schedule = tk.Label(self.master, text="", font=("Arial",12))
         self.sun_schedule.pack(side=tk.TOP, anchor="w")
 
+        # Create a label for displaying observing time data i.e. scheduleing stuff
+        self.schedule = tk.Label(self.master, text="     \t \u0394t to sunrise: \t\t \u0394t to sunset: ", font=("Arial",12))
+        self.schedule.pack(side=tk.TOP, anchor="w")
+
         # Create a label for the Moon rise and set times
         self.moon_schedule = tk.Label(self.master, text="", font=("Arial",12))
         self.moon_schedule.pack(side=tk.TOP, anchor="w")
+
+        # Create a label for displaying observing time data i.e. scheduleing stuff
+        self.schedule = tk.Label(self.master, text="     \t \u0394t to moonrise: \t\t \u0394t to moonset: ", font=("Arial",12))
+        self.schedule.pack(side=tk.TOP, anchor="w")
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
@@ -450,7 +462,7 @@ class SAM:
         self.master.after(1000, self.update_time)
 
     def update_horizons(self):
-        horizon = "Horizon -   Limb: {0}         Upper FoV: {1}         Lower FoV: {2}\n".format(*self.observer.horizon)
+        horizon = "Horizon -   Limb: {0:.4f}\u00b0         Upper FoV: {1:.4f}\u00b0         Lower FoV: {2:.4f}\u00b0\n".format(*self.observer.horizon)
         self.horizon.config(text=horizon)
 
     def update_gpsLoc(self):
@@ -508,7 +520,7 @@ class SAM:
 
     def check_sun_and_moon(self, current_time):
         sun,moon = self.observer.check_sun_and_moon(current_time)
-        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t dt:".format(sun[0], sun[1],sun[2],sun[3])
+        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
         self.sun_schedule.config(text=sun_str)
         if SUN_FLAG:
             self.change_color(self.sun_schedule, "red")
