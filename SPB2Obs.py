@@ -37,7 +37,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("920x400") # set default window size
+    root.geometry("1000x400") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -132,7 +132,7 @@ class SPB2Obs:
         D = int(alpha * (180/math.pi))
         M = int((alpha * (180/math.pi) - D) * 60)
         S = ((alpha * (180/math.pi) - D) * 60 - M) * 60
-        return "{0}:{1}:{2:.2f}".format(D,M,S)
+        return "{0}:{1}:{2:.2f}".format(D,abs(M),abs(S))
 
     def check_fov(self, utctime):
         sources = []
