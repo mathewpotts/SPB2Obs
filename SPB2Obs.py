@@ -38,7 +38,7 @@ def read_in_args():
 def GUI(args):
     root = tk.Tk()
     root.geometry("920x400") # set default window size
-    app = SourcesGUI(root,args)
+    app = SAM(root,args)
     root.mainloop()
 
 # Define class to observer
@@ -91,7 +91,7 @@ class SPB2Obs:
             longitude = self.lat_long_convert(longitude, 0)
 
             # Update observer
-            locArray = [payload_time,latitude,longitude,height]
+            locArray = [payload_time,latitude,longitude,float(height) * 0.3048]
             self.set_observer(locArray)
 
             # print the extracted date
@@ -350,7 +350,7 @@ class SPB2Obs:
                     self.ephem_objarray.append(obj)
 
 
-class SourcesGUI:
+class SAM:
     def __init__(self, master,args):
         self.master = master
 
@@ -365,7 +365,7 @@ class SourcesGUI:
             ["Object", "Azimuth", "Altitude"],
             ["------", "-------", "--------"]
         ]
-        self.master.title("SPB2Obs")
+        self.master.title("Situational Awareness Monitor")
 
         # Create a label for the current time
         self.time_label = tk.Label(self.master, text="", font=("Arial", 12))
