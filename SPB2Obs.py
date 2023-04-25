@@ -191,14 +191,13 @@ class SPB2Obs:
         self.m.compute(self.obs) #compute location of moon relative to observer
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
-
-        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi)) #- SUN_OFFSET) #set condition for sun
-        moonmask = phaseMoon <= MOON_PERCENT/100
+        sunmask = altSun <= self.default_horizon * (180 / math.pi) #- SUN_OFFSET) #set condition for sun
+        moonmask = phaseMoon <= MOON_PERCENT/100 or altMoon <= self.default_horizon * (180/math.pi)
         if TESTING:
             if not sunmask:
                 print(altSun,"Warning: Sun is up!")
             if not moonmask:
-                print(altMoon,"Moon phase is higher.")
+                print(altMoon,"Moon is above horizon and the phase is greater than {0}%.".format(MOON_PERCENT))
             SUN_FLAG = True if not sunmask else False
             MOON_FLAG = True if not moonmask else False
             print(SUN_FLAG,MOON_FLAG)
