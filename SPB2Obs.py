@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
-# Authors: Mathew Potts, Jordan Bogdan, Andrew Wang
+# Authors: Mathew Potts, Eliza, Jordan Bogdan, Andrew Wang
 
 #Import libs
 import ephem
 import math
 import numpy as np
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import argparse
 from gcn_kafka import Consumer
 import tkinter as tk
@@ -47,13 +47,16 @@ class SPB2Obs:
         self.in_obj = self.read_file(args.obj) # read infile objects
         self.ephem_objarray = self.ephem_object_array() # Create Ephem objects
 
+        # init elevation of balllon
+        self.elevation = 35000
+
         # Set init observer
         self.obs = ephem.Observer() #make observer
         self.gpsLoc = self.read_file(args.loc) #read in gps location
         self.set_observer(self.gpsLoc) #set observer based on location
 
         # Init horizons, later it is updated by the horizons function
-        self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))
+        self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
 
@@ -64,8 +67,8 @@ class SPB2Obs:
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
 
-    def horizons(self, elevation):
-        self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(elevation))))
+    def horizons(self):
+        self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))
         self.obs.horizon = self.default_horizon
         self.upperfov = self.default_horizon + (math.pi/180)*2.5
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
@@ -116,7 +119,7 @@ class SPB2Obs:
 
     @property
     def gps_loc(self):
-        return [self.obs.date,self.obs.lat,self.obs.long,self.obs.elevation]
+        return [self.obs.date,self.obs.lat,self.obs.long,float(self.elevation)]
 
     @property
     def horizon(self):
@@ -189,8 +192,8 @@ class SPB2Obs:
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
 
-        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi) - SUN_OFFSET) #set condition for sun
-        moonmask = phaseMoon <= MOON_PERCENT
+        sunmask = altSun <= (((self.default_horizon) * 180 / math.pi)) #- SUN_OFFSET) #set condition for sun
+        moonmask = phaseMoon <= MOON_PERCENT/100
         if TESTING:
             if not sunmask:
                 print(altSun,"Warning: Sun is up!")
@@ -212,8 +215,10 @@ class SPB2Obs:
             self.obs.date = ls[0] # UTC time
         self.obs.lat = ls[1]
         self.obs.lon = ls[2]
-        self.obs.elevation = float(ls[3])
-        self.horizons(float(ls[3]))
+        self.obs.elevation = 0 # the observer must be at sea level
+        if ls[3] != "0": # wait for the update from the web scrapper
+            self.elevation = float(ls[3])
+        self.horizons()
         self.obs.pressure = 0 # turn off refraction
         print(self.obs)
 
@@ -241,7 +246,7 @@ class SPB2Obs:
 
         # Checking sun position
         sun = []
-        self.obs.horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.obs.elevation))))- (math.pi/180)*SUN_OFFSET # define horizon for the sun calculation
+        self.obs.horizon =-1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))#self.obs.elevation))))#- (math.pi/180)*SUN_OFFSET # define horizon for the sun calculation
         if TESTING:
             print('sun',self.obs)
         try:
@@ -365,16 +370,20 @@ class SAM:
             ["Object", "Azimuth", "Altitude"],
             ["------", "-------", "--------"]
         ]
-        self.master.title("Situational Awareness Monitor")
+        self.master.title("Situational Awareness Monitor (SAM)")
 
         # Create a label for the current time
         self.time_label = tk.Label(self.master, text="", font=("Arial", 12))
         self.time_label.pack(side=tk.TOP)
 
         # Create a label for the gps location
-        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3}\n".format(*self.observer.gps_loc)
+        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3} m\n".format(*self.observer.gps_loc)
         self.gps_loc = tk.Label(self.master, text=gps_loc, font=("Arial",12))
         self.gps_loc.pack(side=tk.TOP, anchor="w")
+
+        # Projected Flight trajectory
+        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - \tWind:\n", font=("Arial",12))
+        self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
         horizon = "Horizon -   Limb: {0}         Upper FoV: {1}         Lower FoV: {2}\n".format(*self.observer.horizon)
@@ -446,7 +455,7 @@ class SAM:
         self.horizon.config(text=horizon)
 
     def update_gpsLoc(self):
-        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f}\n".format(*self.observer.gps_loc)
+        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f} m\n".format(*self.observer.gps_loc)
         self.gps_loc.config(text=gps_loc)
 
     def check_sources(self, current_time):
@@ -500,7 +509,7 @@ class SAM:
 
     def check_sun_and_moon(self, current_time):
         sun,moon = self.observer.check_sun_and_moon(current_time)
-        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
+        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t dt:".format(sun[0], sun[1],sun[2],sun[3])
         self.sun_schedule.config(text=sun_str)
         if SUN_FLAG:
             self.change_color(self.sun_schedule, "red")
