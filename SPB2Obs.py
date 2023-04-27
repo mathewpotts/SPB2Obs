@@ -254,7 +254,9 @@ class SPB2Obs:
             print('sun',self.obs)
         try:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
+            dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
+            dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
         except ephem.AlwaysUpError:
             print("Warning: Sun is always up!")
             sun_rise = 'N/A\t\t'
@@ -265,7 +267,7 @@ class SPB2Obs:
             sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
         sun = [sun_rise,sun_set,self.s.az,self.s.alt]
-
+        dt_sun = [dt_srise,dt_sset]
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
@@ -273,7 +275,9 @@ class SPB2Obs:
             print('moon',self.obs)
         try:
             moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
+            dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24 # convert to hours
             moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
+            dt_mset = abs(ephem.Date(utctime) - moon_set) * 24 # convert to hours
         except ephem.AlwaysUpError:
             print("Warning: Moon is always up!")
             moon_rise = 'N/A\t\t'
@@ -284,8 +288,8 @@ class SPB2Obs:
             moon_set = 'N/A\t\t'
         self.m.compute(self.obs) # compute the location of the moon relative to observer
         moon = [moon_rise,moon_set,self.m.az,self.m.alt,self.m.moon_phase]
-
-        return sun,moon
+        dt_moon = [dt_mrise,dt_mset]
+        return sun,moon,dt_sun,dt_moon
 
     def gcn_alerts(self):
         # Typical GCN alert
@@ -398,16 +402,16 @@ class SAM:
         self.sun_schedule.pack(side=tk.TOP, anchor="w")
 
         # Create a label for displaying observing time data i.e. scheduleing stuff
-        self.schedule = tk.Label(self.master, text="     \t \u0394t to sunrise: \t\t \u0394t to sunset: ", font=("Arial",12))
-        self.schedule.pack(side=tk.TOP, anchor="w")
+        self.dt_sun = tk.Label(self.master, text="     \t \u0394t to sunrise: \t\t \u0394t to sunset: ", font=("Arial",12))
+        self.dt_sun.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the Moon rise and set times
         self.moon_schedule = tk.Label(self.master, text="", font=("Arial",12))
         self.moon_schedule.pack(side=tk.TOP, anchor="w")
 
         # Create a label for displaying observing time data i.e. scheduleing stuff
-        self.schedule = tk.Label(self.master, text="     \t \u0394t to moonrise: \t\t \u0394t to moonset: ", font=("Arial",12))
-        self.schedule.pack(side=tk.TOP, anchor="w")
+        self.dt_moon = tk.Label(self.master, text="     \t \u0394t to moonrise: \t\t \u0394t to moonset: ", font=("Arial",12))
+        self.dt_moon.pack(side=tk.TOP, anchor="w")
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
@@ -487,7 +491,7 @@ class SAM:
         sun_alert = None
         moon_alert = None
 
-        sun,moon = self.observer.check_sun_and_moon(current_time)
+        sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         current_time = str(ephem.Date(current_time))
         if current_time == str(sun[0]):
             sun_alert = "Alert: Sun is rising over the limb!"
@@ -519,19 +523,23 @@ class SAM:
         ack_button.pack(side=tk.BOTTOM)
 
     def check_sun_and_moon(self, current_time):
-        sun,moon = self.observer.check_sun_and_moon(current_time)
+        sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
         self.sun_schedule.config(text=sun_str)
         if SUN_FLAG:
             self.change_color(self.sun_schedule, "red")
         else:
             self.change_color(self.sun_schedule, "black")
+        dt_sun_str = "     \t \u0394t to sunrise: {0:.2f}\t\t \u0394t to sunset: {1:.2f}".format(*dt_sun)
+        self.dt_sun.config(text=dt_sun_str)
         moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}%".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
         self.moon_schedule.config(text=moon_str)
         if MOON_FLAG:
             self.change_color(self.moon_schedule, "red")
         else:
             self.change_color(self.moon_schedule, "black")
+        dt_moon_str = "     \t \u0394t to moonrise: {0:.2f}\t \u0394t to moonset: {1:.2f}".format(*dt_moon)
+        self.dt_moon.config(text=dt_moon_str)
 
     def open_window(self):
         # Create a new window

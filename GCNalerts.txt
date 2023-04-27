@@ -154,3 +154,51 @@ COMMENTS:        The LC_URL file will not be created until ~15 min after the tri
 --------
 FindCoordinator response error: Local: Host resolution failure
 --------
+FindCoordinator response error: Local: Host resolution failure
+--------
+JoinGroup failed: Local: Host resolution failure
+--------
+Failed to query logical offset END: Local: Host resolution failure
+--------
+TITLE:           GCN/SWIFT NOTICE
+NOTICE_DATE:     Thu 27 Apr 23 10:32:26 UT
+NOTICE_TYPE:     Swift-BAT GRB Position
+TRIGGER_NUM:     1165948,   Seg_Num: 0
+GRB_RA:          153.324d {+10h 13m 18s} (J2000),
+                 153.687d {+10h 14m 45s} (current),
+                 152.541d {+10h 10m 10s} (1950)
+GRB_DEC:         +48.180d {+48d 10' 47"} (J2000),
+                 +48.064d {+48d 03' 49"} (current),
+                 +48.428d {+48d 25' 40"} (1950)
+GRB_ERROR:       3.00 [arcmin radius, statistical only]
+GRB_INTEN:       3233 [cnts]    Image_Peak=155 [image_cnts]
+TRIGGER_DUR:     2.048 [sec] 
+TRIGGER_INDEX:   253     E_range: 15-50 keV
+BKG_INTEN:       31137 [cnts]
+BKG_TIME:        37880.81 SOD {10:31:20.81} UT
+BKG_DUR:         24 [sec]
+GRB_DATE:        20061 TJD;   117 DOY;   23/04/27
+GRB_TIME:        37911.98 SOD {10:31:51.98} UT
+GRB_PHI:         -77.19 [deg]
+GRB_THETA:        13.59 [deg]
+SOLN_STATUS:     0x83
+RATE_SIGNIF:     11.04 [sigma]
+IMAGE_SIGNIF:    6.80 [sigma]
+MERIT_PARAMS:     +1  +0  +0  +1  +1  -3  +0  +0 +13  +0 
+SUN_POSTN:        34.58d {+02h 18m 20s}  +13.82d {+13d 49' 23"}
+SUN_DIST:         97.93 [deg]   Sun_angle= -7.9 [hr] (East of Sun)
+MOON_POSTN:      125.58d {+08h 22m 19s}  +24.87d {+24d 52' 12"}
+MOON_DIST:        32.04 [deg]
+MOON_ILLUM:      46 [%]
+GAL_COORDS:      167.64, 52.89 [deg] galactic lon,lat of the burst (or transient)
+ECL_COORDS:      136.21, 34.38 [deg] ecliptic lon,lat of the burst (or transient)
+COMMENTS:        SWIFT-BAT GRB Coordinates.  
+COMMENTS:        This is a rate trigger.  
+COMMENTS:        A point_source was found.  
+COMMENTS:        This does not match any source in the on-board catalog.  
+COMMENTS:        This does not match any source in the ground catalog.  
+COMMENTS:        This is a GRB.  
+COMMENTS:        Since the IMAGE_SIGNIF is less than 7 sigma, this is a questionable detection.  
+COMMENTS:        This trigger occurred at longitude,latitude = 124.10,-17.16 [deg].  
+
+--------
