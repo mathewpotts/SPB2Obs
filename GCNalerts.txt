@@ -202,3 +202,41 @@ COMMENTS:        Since the IMAGE_SIGNIF is less than 7 sigma, this is a question
 COMMENTS:        This trigger occurred at longitude,latitude = 124.10,-17.16 [deg].  
 
 --------
+TITLE:           GCN/FERMI NOTICE
+NOTICE_DATE:     Fri 28 Apr 23 09:09:27 UT
+NOTICE_TYPE:     Fermi-GBM Flight Position
+RECORD_NUM:      46
+TRIGGER_NUM:     704365743
+GRB_RA:           97.500d {+06h 30m 00s} (J2000),
+                  97.301d {+06h 29m 12s} (current),
+                  97.925d {+06h 31m 42s} (1950)
+GRB_DEC:         -75.500d {-75d 30' 00"} (J2000),
+                 -75.517d {-75d 31' 00"} (current),
+                 -75.463d {-75d 27' 44"} (1950)
+GRB_ERROR:       25.90 [deg radius, statistical plus systematic]
+GRB_INTEN:       62 [cnts/sec]
+DATA_SIGNIF:     4.80 [sigma]
+INTEG_TIME:      2.048 [sec]
+GRB_DATE:        20062 TJD;   118 DOY;   23/04/28
+GRB_TIME:        32938.15 SOD {09:08:58.15} UT
+GRB_PHI:         230.00 [deg]
+GRB_THETA:        30.00 [deg]
+DATA_TIME_SCALE: 2.0480 [sec]
+HARD_RATIO:      1.48
+LOC_ALGORITHM:   3 (version number of)
+MOST_LIKELY:      74%  GRB
+2nd_MOST_LIKELY:  24%  Distant Particles
+DETECTORS:       0,0,0, 0,0,0, 1,1,0, 0,0,0, 0,0,
+SUN_POSTN:        35.48d {+02h 21m 54s}  +14.12d {+14d 07' 18"}
+SUN_DIST:         96.99 [deg]   Sun_angle= -4.1 [hr] (East of Sun)
+MOON_POSTN:      137.27d {+09h 09m 04s}  +21.87d {+21d 52' 03"}
+MOON_DIST:       100.53 [deg]
+MOON_ILLUM:      55 [%]
+GAL_COORDS:      286.60,-27.53 [deg] galactic lon,lat of the burst (or transient)
+ECL_COORDS:      258.27,-80.75 [deg] ecliptic lon,lat of the burst (or transient)
+LC_URL:          http://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/2023/bn230428381/quicklook/glg_lc_medres34_bn230428381.gif
+COMMENTS:        Fermi-GBM Flight-calculated Coordinates.  
+COMMENTS:        This trigger occurred at longitude,latitude = 48.97,-18.73 [deg].  
+COMMENTS:        The LC_URL file will not be created until ~15 min after the trigger.  
+
+--------
