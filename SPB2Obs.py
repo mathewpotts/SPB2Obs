@@ -71,6 +71,16 @@ class SPB2Obs:
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
 
+    def payloadDrift(initLat, initLon, headingAng, velocity, elevation):
+        headingAngCal = math.radians(90-headingAng)
+        dt = 60 #sec
+        velocity = velocity * 0.51444 # m/s
+        elevation = elevation * 0.3048 # m
+        b = (velocity * dt)/(ephem.earth_radius+elevation)
+        finalLat = math.asin(math.sin(headingAngCal)*math.sin(b))
+        finalLon = math.acos(math.cos(b)/math.cos(finalLat))
+        return math.degrees(finalLat), math.degrees(finalLon)
+
     def horizons(self):
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))
         self.obs.horizon = self.default_horizon
