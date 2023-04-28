@@ -41,7 +41,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("1000x400") # set default window size
+    root.geometry("1000x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -163,20 +163,20 @@ class SPB2Obs:
             if rise > sett: # if source is setting first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
-                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
                     print(gui_str)
                     return gui_str
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
                     return gui_str
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
-                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
                     print(gui_str)
                     return gui_str
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                    gui_str = "{0},{1},{2}".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
                     return gui_str
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
@@ -413,7 +413,7 @@ class SAM:
         self.dt_moon = tk.Label(self.master, text="     \t \u0394t to moonrise: \t\t \u0394t to moonset: ", font=("Arial",12))
         self.dt_moon.pack(side=tk.TOP, anchor="w")
 
-        # Have an input for the Sun SUN_OFFSET
+        # Have an input for the SUN_OFFSET
         validation = self.master.register(self.validate_numeric_input)
         self.Entry = tk.Label(self.master, text="Sun Altitude Offset: ", font=("Arial",12))
         self.e = tk.Entry(self.master, validate="key", validatecommand=(validation, '%P'))
@@ -424,13 +424,13 @@ class SAM:
         self.Entry_.pack(side=tk.LEFT, anchor="w")
 
         # Create a button that opens another window
-        self.button = tk.Button(self.master, text="Open Window", command=self.open_window)
+        self.button = tk.Button(self.master, text="All Sources", command=self.open_window)
         self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
-            row = "{: >20} {: >20} {: >20}".format(*sourcerow)
+            row = "{: >15} {: >15} {: >15} {: >15} {: >15}".format(*sourcerow)
             self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
@@ -499,7 +499,7 @@ class SAM:
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            row = "{: >20} {: >20} {: >20}".format(*source.split(','))
+            row = "{: >15} {: >15} {: >15} {: >15} {: >15}".format(*source.split(','))
             if TESTING:
                 print(row)
             self.listbox.insert(tk.END, row)
@@ -562,7 +562,7 @@ class SAM:
     def open_window(self):
         # Create a new window
         top = tk.Toplevel(self.master)
-        top.title("New Window")
+        top.title("All Sources")
 
         # Create a label to hold the image
         image_label = tk.Label(top)
