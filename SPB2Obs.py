@@ -27,6 +27,9 @@ MOON_PERCENT = 30.0
 SUN_FLAG  = False
 MOON_FLAG = False
 
+# Init alert flags for GNC alert
+GNC_FLAG = False
+
 # Allows the use of greek letters
 
 
@@ -152,6 +155,10 @@ class SPB2Obs:
         upperFoV = self.upperfov * (180/math.pi)
         lowerFoV = self.lowerfov * (180/math.pi)
         return [default_horizon, upperFoV, lowerFoV]
+
+    @property
+    def GNC_alert(self):
+        return self.GNC_str
 
     def rad2degHMS(self, alpha):
         D = int(alpha * (180/math.pi))
@@ -373,24 +380,32 @@ class SPB2Obs:
                             'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
                             'gcn.classic.text.ICECUBE_CASCADE',
                             'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
-
+        global GNC_FLAG
         while True:
             with open('GCNalerts.txt','a') as f:
                 for message in consumer.consume(timeout=1):
+                    GNC_FLAG = True
                     value = message.value().decode('ASCII')
                     print(value,file=f) # print alert to file
                     print('--------',file=f) # separate alerts
 
                     # create a ephem object
                     alert = value.split('\n')
-                    name  = re.search(r'TITLE:\s*(.*)',alert[0]).group(1) # name of object
+                    name_entry =  [match for match in alert if "TITLE" in match]
+                    name  = re.search(r'TITLE:\s*(.*)', name_entry).group(1) # name of object
                     type_  = "f|G"                                        # dummy type
-                    ra    = re.search(r'\d+.\d+', alert[5]).group()       # find J2000 RA
-                    dec   = re.search(r'\d+.\d+', alert[8]).group()       # find J2000 DEC
+                    ra_entry  = [match for match in alert if "GRB_RA" in match]
+                    dec_entry = [match for match in alert if "GRB_DEC" in match]
+                    ra    = re.search(r'\d+.\d+', ra_entry).group()       # find J2000 RA
+                    dec   = re.search(r'\d+.\d+', dec_entry).group()       # find J2000 DEC
                     mag   = "1.0"                                         # dummy magnitude
                     in_obj = [name,type_,ra,dec,mag]
                     obj = create_ephem_object(in_obj)
+                    self.GNC_str = str(obj)
                     self.ephem_objarray.append(obj)
+                    if GNC_FLAG:
+                        GNC_FLAG = False
+
 
 
 class SAM:
@@ -544,24 +559,25 @@ class SAM:
             self.listbox.insert(tk.END, row)
 
     def check_alert(self, current_time):
-        # Simulate an alert
+        # init alert bool
         sun_alert = None
         moon_alert = None
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
-        current_time = str(ephem.Date(current_time))
-        if current_time == str(sun[0]):
+        if float(dt_sun[0]) < 0.000277778: # if dt is less than 1.0000008 seconds
             sun_alert = "Alert: Sun is rising over the limb!"
-        elif current_time == str(sun[1]):
+        elif dt_sun[1] < 0.000277778: # if dt is less than 1.0000008 seconds
             sun_alert = "Alert: Sun is setting over the limb!"
-        elif current_time == str(moon[0]):
+        elif dt_moon[0] < 0.000277778: # if dt is less than 1.0000008 seconds
             moon_alert = "Alert: Moon is rising over the limb!"
-        elif current_time == str(moon[1]):
+        elif dt_moon[1] < 0.000277778: # if dt is less than 1.0000008 seconds
             moon_alert = "Alert: Moon is setting over the limb!"
         if sun_alert:
             self.make_alert_win(sun_alert)
-        if moon_alert:
+        if moon_alert: # if dt is less than 1.0000008 seconds
             self.make_alert_win(moon_alert)
+        if GNC_FLAG:
+            self.make_alert_win(self.observer.GNC_alert)
 
     def change_color(self, object, color):
         object.config(fg= "{0}".format(color))
