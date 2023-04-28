@@ -71,15 +71,20 @@ class SPB2Obs:
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
 
-    def payloadDrift(initLat, initLon, headingAng, velocity, elevation):
-        headingAngCal = math.radians(90-headingAng)
-        dt = 60 #sec
+        # init wind
+        self.winddir = "0 Knots @ 0\u00b0"
+
+    def payloadDrift(self,initLat, initLon, wind, elevation):
+        headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
+        velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
+        headingAngCal = math.radians(headingAng-180) # heading angle is relative to north (i.e. 0 degrees) and where the wind is blowing from
+        dt = 3600 #sec
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
         finalLat = math.asin(math.sin(headingAngCal)*math.sin(b))
         finalLon = math.acos(math.cos(b)/math.cos(finalLat))
-        return math.degrees(finalLat), math.degrees(finalLon)
+        return math.degrees(initLat + finalLat), math.degrees(initLon + finalLon)
 
     def horizons(self):
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))
@@ -101,7 +106,7 @@ class SPB2Obs:
             latitude = data_row.find_all('center')[2].get_text().strip().split('  ')[1]
             longitude = data_row.find_all('center')[3].get_text().strip().split('  ')[1]
             height = data_row.find_all('center')[4].get_text().strip().split('  ')[1]
-            wind = data_row.find_all('center')[5].get_text().strip()
+            self.winddir = data_row.find_all('center')[5].get_text().strip()
 
             # Lat/Long string conversion
             latitude = self.lat_long_convert(latitude, 1)
@@ -117,7 +122,7 @@ class SPB2Obs:
                 print("Latitude:", latitude)
                 print("Longitude:", longitude)
                 print("Height:", height)
-                print("Wind:", wind)
+                print("Wind:", self.winddir)
 
         else:
             print("Failed to retrieve webpage")
@@ -130,6 +135,12 @@ class SPB2Obs:
         nums = [float(num_str) for num_str in nums_str]
         value = nums[0] + nums[1]/60
         return str(-1*value) if negFlag else str(value)
+
+    @property
+    def wind(self):
+        print(float(self.obs.lat),float(self.obs.long))
+        preLat,preLong = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.winddir,self.elevation)
+        return [self.winddir,preLat,preLong]
 
     @property
     def gps_loc(self):
@@ -409,7 +420,7 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - \tWind:\n", font=("Arial",12))
+        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Wind: \t\t Predicted Latitude: \t\t Predicted Longitude:\n", font=("Arial",12))
         self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
@@ -497,11 +508,18 @@ class SAM:
         # Update the gps location of payload label
         self.update_gpsLoc()
 
+        # Update the projected trajectory
+        self.update_proj_traj()
+
         # Update the horizons
         self.update_horizons()
 
         # Schedule the next update in 1 second
         self.master.after(1000, self.update_time)
+
+    def update_proj_traj(self):
+        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1}\t\t Predicted Longitude: {2}\n".format(*self.observer.wind)
+        self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
         horizon = "Horizon -   Limb: {0:.4f}\u00b0         Upper FoV: {1:.4f}\u00b0         Lower FoV: {2:.4f}\u00b0\n".format(*self.observer.horizon)
@@ -510,6 +528,7 @@ class SAM:
     def update_gpsLoc(self):
         gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f} m\n".format(*self.observer.gps_loc)
         self.gps_loc.config(text=gps_loc)
+        return True
 
     def check_sources(self, current_time):
         # Check if sources are in the fov or close to it
