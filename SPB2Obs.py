@@ -533,7 +533,7 @@ class SAM:
         self.master.after(1000, self.update_time)
 
     def update_proj_traj(self):
-        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1:.4f}\t\t Predicted Longitude: {2:.4f}\n".format(*self.observer.wind)
+        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1:.4f}\u00b0\t\t Predicted Longitude: {2:.4f}\u00b0\n".format(*self.observer.wind)
         self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
@@ -603,7 +603,7 @@ class SAM:
             self.change_color(self.sun_schedule, "red")
         else:
             self.change_color(self.sun_schedule, "black")
-        dt_sun_str = "     \t \u0394t to sunrise: {0:.2f}\t\t \u0394t to sunset: {1:.2f}".format(*dt_sun)
+        dt_sun_str = "     \t \u0394t to sunrise: {0:.2f} hr\t \u0394t to sunset: {1:.2f} hr".format(*dt_sun)
         self.dt_sun.config(text=dt_sun_str)
         moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}%".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
         self.moon_schedule.config(text=moon_str)
@@ -611,7 +611,7 @@ class SAM:
             self.change_color(self.moon_schedule, "red")
         else:
             self.change_color(self.moon_schedule, "black")
-        dt_moon_str = "     \t \u0394t to moonrise: {0:.2f}\t \u0394t to moonset: {1:.2f}".format(*dt_moon)
+        dt_moon_str = "     \t \u0394t to moonrise: {0:.2f} hr\t \u0394t to moonset: {1:.2f} hr".format(*dt_moon)
         self.dt_moon.config(text=dt_moon_str)
 
     def open_window(self):
