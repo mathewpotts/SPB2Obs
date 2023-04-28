@@ -420,6 +420,12 @@ class SAM:
         self.e.insert(0,15)
         self.Entry.pack(side=tk.LEFT, anchor="w")
         self.e.pack(side=tk.LEFT, anchor="w")
+        self.Entry_ = tk.Label(self.master, text="\u00b0", font=("Arial",12))
+        self.Entry_.pack(side=tk.LEFT, anchor="w")
+
+        # Create a button that opens another window
+        self.button = tk.Button(self.master, text="Open Window", command=self.open_window)
+        self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
@@ -434,11 +440,7 @@ class SAM:
         self.scrollbar.config(command=self.listbox.yview)
 
         # Pack the listbox into the GUI
-        self.listbox.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-
-        # Create a button that opens another window
-        self.button = tk.Button(self.master, text="Open Window", command=self.open_window)
-        self.button.pack(side=tk.BOTTOM)
+        self.listbox.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
 
         # Update the time label and sources list
         self.update_time()
