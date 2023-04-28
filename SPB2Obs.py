@@ -41,7 +41,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("1000x500") # set default window size
+    root.geometry("1150x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -168,12 +168,22 @@ class SPB2Obs:
 
     def objs_in_fov(self, utctime, ephem_obj):
         try:
+            # default horizon
             rise = self.obs.next_rising(ephem_obj)
             sett = self.obs.next_setting(ephem_obj)
+            # at upper FoV
+            self.obs.horizon = self.upperfov
+            upper_rise = self.obs.next_rising(ephem_obj)
+            upper_set  = self.obs.next_rising(ephem_obj)
+            # at lower FoV
+            self.obs.horizon = self.lowerfov
+            lower_rise = self.obs.next_rising(ephem_obj)
+            lower_set  = self.obs.next_rising(ephem_obj)
+            self.obs.horizon = self.default_horizon # reset horizon back to the limb
             if rise > sett: # if source is setting first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
-                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
                     print(gui_str)
                     return gui_str
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
@@ -182,7 +192,7 @@ class SPB2Obs:
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
-                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
+                    gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
                     print(gui_str)
                     return gui_str
                 elif alt <= self.upperfov and alt >= self.lowerfov and mask:
@@ -440,7 +450,7 @@ class SAM:
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
-            row = "{: >15} {: >15} {: >15} {: >15} {: >15}".format(*sourcerow)
+            row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*sourcerow)
             self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
@@ -509,7 +519,7 @@ class SAM:
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            row = "{: >15} {: >15} {: >15} {: >15} {: >15}".format(*source.split(','))
+            row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
             if TESTING:
                 print(row)
             self.listbox.insert(tk.END, row)
