@@ -470,7 +470,7 @@ class SAM:
         self.Entry_.pack(side=tk.LEFT, anchor="w")
 
         # Create a button that opens another window
-        self.button = tk.Button(self.master, text="All Sources", command=self.open_window)
+        self.button = tk.Button(self.master, text="Schedule", command=self.open_window)
         self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
 
         # Create a listbox widget and populate it with the sources
@@ -533,7 +533,7 @@ class SAM:
         self.master.after(1000, self.update_time)
 
     def update_proj_traj(self):
-        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1}\t\t Predicted Longitude: {2}\n".format(*self.observer.wind)
+        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1:.4f}\t\t Predicted Longitude: {2:.4f}\n".format(*self.observer.wind)
         self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
@@ -617,7 +617,9 @@ class SAM:
     def open_window(self):
         # Create a new window
         top = tk.Toplevel(self.master)
-        top.title("All Sources")
+        top.title("Schedule")
+
+        top.minsize(500, 200)
 
         # Create a label to hold the image
         image_label = tk.Label(top)
