@@ -195,7 +195,7 @@ class SPB2Obs:
         self.m.compute(self.obs) #compute location of moon relative to observer
         phaseMoon = float(repr(self.m.moon_phase))
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
-        sunmask = altSun <= self.default_horizon * (180 / math.pi) #- SUN_OFFSET) #set condition for sun
+        sunmask = altSun <= self.default_horizon * (180 / math.pi) - float(SUN_OFFSET) #set condition for sun
         moonmask = phaseMoon <= MOON_PERCENT/100 or altMoon <= self.default_horizon * (180/math.pi)
         if TESTING:
             if not sunmask:
@@ -249,7 +249,7 @@ class SPB2Obs:
 
         # Checking sun position
         sun = []
-        self.obs.horizon =-1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))#self.obs.elevation))))#- (math.pi/180)*SUN_OFFSET # define horizon for the sun calculation
+        self.obs.horizon =-1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation)))) - (math.pi/180)*float(SUN_OFFSET) # define horizon for the sun calculation
         if TESTING:
             print('sun',self.obs)
         try:
@@ -413,6 +413,14 @@ class SAM:
         self.dt_moon = tk.Label(self.master, text="     \t \u0394t to moonrise: \t\t \u0394t to moonset: ", font=("Arial",12))
         self.dt_moon.pack(side=tk.TOP, anchor="w")
 
+        # Have an input for the Sun SUN_OFFSET
+        validation = self.master.register(self.validate_numeric_input)
+        self.Entry = tk.Label(self.master, text="Sun Altitude Offset: ", font=("Arial",12))
+        self.e = tk.Entry(self.master, validate="key", validatecommand=(validation, '%P'))
+        self.e.insert(0,15)
+        self.Entry.pack(side=tk.LEFT, anchor="w")
+        self.e.pack(side=tk.LEFT, anchor="w")
+
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
@@ -426,7 +434,7 @@ class SAM:
         self.scrollbar.config(command=self.listbox.yview)
 
         # Pack the listbox into the GUI
-        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.listbox.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
         # Create a button that opens another window
         self.button = tk.Button(self.master, text="Open Window", command=self.open_window)
@@ -435,6 +443,9 @@ class SAM:
         # Update the time label and sources list
         self.update_time()
 
+    def validate_numeric_input(self, new_value):
+        return new_value.isnumeric()
+
     def update_time(self):
         # Get the current time and format it as a string
         #new_time = time.gmtime(calendar.timegm(time.gmtime()) + 3350)
@@ -442,6 +453,11 @@ class SAM:
 
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "\n")
+
+        # Update the SUN_OFFSET based on input of entry box
+        global SUN_OFFSET
+        SUN_OFFSET = self.e.get()
+        print("\n\n",SUN_OFFSET)
 
         # Check for an alert every 60 seconds
         if int(time.strftime("%S")) == 0:
