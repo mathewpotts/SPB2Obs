@@ -80,7 +80,7 @@ class SPB2Obs:
     def payloadDrift(self,initLat, initLon, wind, elevation):
         headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
         velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
-        headingAngCal = math.radians(90 - headingAng)
+        headingAngCal = math.radians(90-headingAng)
         dt = 86400 #sec # change to dt between sun rise and update it should converge to right location
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
@@ -107,16 +107,19 @@ class SPB2Obs:
             payload_time = list(reversed(data_row.find_all('center')[1].get_text().strip().split('Z  ')))
             payload_time = '20'+payload_time[0].split('/')[2]+'/'+payload_time[0].split('/')[0]+'/'+payload_time[0].split('/')[1]+' '+payload_time[1]
             latitude = data_row.find_all('center')[2].get_text().strip().split('  ')[1]
+
+            # Convert longitude to work with ephem (E+)
             longitude = data_row.find_all('center')[3].get_text().strip().split('  ')[1]
             longdir   = data_row.find_all('center')[3].get_text().strip().split('  ')[2]
-            if longdir == 'W':
-                longitude = 360 - longitude 
             height = data_row.find_all('center')[4].get_text().strip().split('  ')[1]
             self.balloondir = data_row.find_all('center')[5].get_text().strip()
 
             # Lat/Long string conversion
             latitude = self.lat_long_convert(latitude, 1)
-            longitude = self.lat_long_convert(longitude, 0)
+            if longdir == 'W':
+                longitude = self.lat_long_convert(longitude, 1)
+            else:
+                longitude = self.lat_long_convert(lngitude,0)
 
             # Update observer
             locArray = [payload_time,latitude,longitude,float(height) * 0.3048]
