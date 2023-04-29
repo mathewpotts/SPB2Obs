@@ -110,7 +110,7 @@ class SPB2Obs:
             longitude = data_row.find_all('center')[3].get_text().strip().split('  ')[1]
             longdir   = data_row.find_all('center')[3].get_text().strip().split('  ')[2]
             if longdir == 'W':
-                longitude = longitude + 180
+                longitude = 360 - longitude 
             height = data_row.find_all('center')[4].get_text().strip().split('  ')[1]
             self.balloondir = data_row.find_all('center')[5].get_text().strip()
 
