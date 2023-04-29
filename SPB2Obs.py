@@ -75,13 +75,13 @@ class SPB2Obs:
         self.m = ephem.Moon() #make Moon
 
         # init wind
-        self.winddir = "0 Knots @ 0\u00b0"
+        self.balloondir = "0 Knots @ 0\u00b0"
 
     def payloadDrift(self,initLat, initLon, wind, elevation):
         headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
         velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
-        headingAngCal = math.radians(headingAng-180) # heading angle is relative to north (i.e. 0 degrees) and where the wind is blowing from
-        dt = 3600 #sec
+        headingAngCal = math.radians(90 - headingAng)
+        dt = 86400 #sec # change to dt between sun rise and update it should converge to right location
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
@@ -108,8 +108,11 @@ class SPB2Obs:
             payload_time = '20'+payload_time[0].split('/')[2]+'/'+payload_time[0].split('/')[0]+'/'+payload_time[0].split('/')[1]+' '+payload_time[1]
             latitude = data_row.find_all('center')[2].get_text().strip().split('  ')[1]
             longitude = data_row.find_all('center')[3].get_text().strip().split('  ')[1]
+            longdir   = data_row.find_all('center')[3].get_text().strip().split('  ')[2]
+            if longdir == 'W':
+                longitude = longitude + 180
             height = data_row.find_all('center')[4].get_text().strip().split('  ')[1]
-            self.winddir = data_row.find_all('center')[5].get_text().strip()
+            self.balloondir = data_row.find_all('center')[5].get_text().strip()
 
             # Lat/Long string conversion
             latitude = self.lat_long_convert(latitude, 1)
@@ -125,7 +128,7 @@ class SPB2Obs:
                 print("Latitude:", latitude)
                 print("Longitude:", longitude)
                 print("Height:", height)
-                print("Wind:", self.winddir)
+                print("Wind:", self.balloondir)
 
         else:
             print("Failed to retrieve webpage")
@@ -140,10 +143,10 @@ class SPB2Obs:
         return str(-1*value) if negFlag else str(value)
 
     @property
-    def wind(self):
+    def balloondirection(self):
         print(float(self.obs.lat),float(self.obs.long))
-        preLat,preLong = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.winddir,self.elevation)
-        return [self.winddir,preLat,preLong]
+        preLat,preLong = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.balloondir,self.elevation)
+        return [self.balloondir,preLat,preLong]
 
     @property
     def gps_loc(self):
@@ -435,7 +438,7 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Wind: \t\t Predicted Latitude: \t\t Predicted Longitude:\n", font=("Arial",12))
+        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Balloon Velocity: \t\t Predicted Latitude: \t\t Predicted Longitude:\n", font=("Arial",12))
         self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
@@ -533,7 +536,7 @@ class SAM:
         self.master.after(1000, self.update_time)
 
     def update_proj_traj(self):
-        proj_traj = "Projected Trajectory - Wind: {0} \t\t Predicted Latitude: {1:.4f}\u00b0\t\t Predicted Longitude: {2:.4f}\u00b0\n".format(*self.observer.wind)
+        proj_traj = "Projected Trajectory - Balloon Velocity: {0} \t\t Predicted Latitude: {1:.4f}\u00b0\t\t Predicted Longitude: {2:.4f}\u00b0\n".format(*self.observer.balloondirection)
         self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
