@@ -81,7 +81,8 @@ class SPB2Obs:
         headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
         velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
         headingAngCal = math.radians(90-headingAng)
-        dt = 86400 #sec # change to dt between sun rise and update it should converge to right location
+        dt =  self.dt_srise * 3600 #sec
+        print('dt: ',dt)
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
@@ -298,9 +299,9 @@ class SPB2Obs:
             print('sun',self.obs)
         try:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
-            dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
+            self.dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
-            dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
+            self.dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
         except ephem.AlwaysUpError:
             print("Warning: Sun is always up!")
             sun_rise = 'N/A\t\t'
@@ -311,7 +312,7 @@ class SPB2Obs:
             sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
         sun = [sun_rise,sun_set,self.s.az,self.s.alt]
-        dt_sun = [dt_srise,dt_sset]
+        dt_sun = [self.dt_srise,self.dt_sset]
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
