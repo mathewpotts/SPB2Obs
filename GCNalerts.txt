@@ -240,3 +240,5 @@ COMMENTS:        This trigger occurred at longitude,latitude = 48.97,-18.73 [deg
 COMMENTS:        The LC_URL file will not be created until ~15 min after the trigger.  
 
 --------
+FindCoordinator response error: Local: Host resolution failure
+--------

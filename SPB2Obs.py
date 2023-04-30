@@ -119,7 +119,7 @@ class SPB2Obs:
             if longdir == 'W':
                 longitude = self.lat_long_convert(longitude, 1)
             else:
-                longitude = self.lat_long_convert(lngitude,0)
+                longitude = self.lat_long_convert(longitude,0)
 
             # Update observer
             locArray = [payload_time,latitude,longitude,float(height) * 0.3048]
