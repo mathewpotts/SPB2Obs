@@ -17,7 +17,7 @@ import threading
 import re
 import requests
 from bs4 import BeautifulSoup
-from geographiclib.geodesic import Geodesic
+
 
 # Define Mask parameters
 SUN_OFFSET   = 15.0
@@ -29,6 +29,9 @@ MOON_FLAG = False
 
 # Init alert flags for GNC alert
 GNC_FLAG = False
+
+# Allows the use of greek letters
+
 
 # Read in args
 def read_in_args():
@@ -74,31 +77,17 @@ class SPB2Obs:
         # init wind
         self.balloondir = "0 Knots @ 0\u00b0"
 
-    def payloadDrift(self,initLat, initLon, balloondir, elevation):
-        headingAng = float(balloondir.split(' @ ')[0].replace('Knots',''))
-        velocity = float(balloondir.split(' @ ')[1].replace('\u00b0', ''))
-
-        # Convert heading angle from radians to degrees
-        initLat = math.degrees(initLat)
-        initLon  = math.degrees(initLon)
-
-        # Calculate the payload's velocity vector in the local horizontal frame
-        velocity = velocity * 0.51444 # m/s
-
-        # Calculate the geodesic distance travelled by the payload in dt seconds
+    def payloadDrift(self,initLat, initLon, wind, elevation):
+        headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
+        velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
+        headingAngCal = math.radians(90-headingAng)
         dt = 86400 #sec # change to dt between sun rise and update it should converge to right location
-        distance = velocity * dt
-        # Create Geodesic object using WGS84 ellipsoid model
-        geod = Geodesic.WGS84
-
-        # Calculate destination point using geod.Direct() method
-        result = geod.Direct(initLat, initLon, headingAng, distance, outmask=Geodesic.STANDARD | Geodesic.LONG_UNROLL)
-
-        # Add altitude to the latitude and longitude
-        lat_new = result["lat2"] + elevation / 111.319
-        lon_new = result["lon2"] + elevation / (111.319 * math.cos(lat_new * math.pi / 180))
-
-        return lat_new, lon_new
+        velocity = velocity * 0.51444 # m/s
+        elevation = elevation * 0.3048 # m
+        b = (velocity * dt)/(ephem.earth_radius+elevation)
+        finalLat = math.asin(math.sin(headingAngCal)*math.sin(b))
+        finalLon = math.acos(math.cos(b)/math.cos(finalLat))
+        return math.degrees(initLat + finalLat), math.degrees(initLon + finalLon)
 
     def horizons(self):
         self.default_horizon = -1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation))))
@@ -181,7 +170,7 @@ class SPB2Obs:
         D = int(alpha * (180/math.pi))
         M = int((alpha * (180/math.pi) - D) * 60)
         S = ((alpha * (180/math.pi) - D) * 60 - M) * 60
-        return "{0}:{1}:{2:.1f}".format(D,abs(M),abs(S))
+        return "{0}:{1}:{2:.2f}".format(D,abs(M),abs(S))
 
     def check_fov(self, utctime):
         sources = []
