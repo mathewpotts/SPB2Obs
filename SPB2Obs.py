@@ -38,7 +38,6 @@ def read_in_args():
     parser = argparse.ArgumentParser(description = 'SPB2Obs shows Objects of Interest (OoI) in the FoV of the CT telescope displaying the azimuth and altitude of those objects. SPB2Obs incorporates live alerts of Gamma-Ray Bursts (GRBs) from the General Coordinates Network (GCN).')
     parser.add_argument('-obj', metavar='objFile',action='store',help='Path to file containing OoI.')
     parser.add_argument('-loc', metavar='locFile',action='store',help='Path to file containing the current GPS location of SPB2 and time.')
-    parser.add_argument('-test', action='store_true',default=False,help='Debugging option.')
     args = parser.parse_args()
     return args
 
@@ -126,13 +125,11 @@ class SPB2Obs:
             self.set_observer(locArray)
 
             # print the extracted date
-            if TESTING:
-                print("Payload time:", payload_time)
-                print("Latitude:", latitude)
-                print("Longitude:", longitude)
-                print("Height:", height)
-                print("Wind:", self.balloondir)
-
+            print("Payload time:", payload_time)
+            print("Latitude:", latitude)
+            print("Longitude:", longitude)
+            print("Height:", height)
+            print("Wind:", self.balloondir)
         else:
             print("Failed to retrieve webpage")
 
@@ -184,8 +181,8 @@ class SPB2Obs:
             if s in self.ephem_objarray:
                 filter_list.append(i)
         self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i not in filter_list]
-        if TESTING:
-            print(self.ephem_objarray)
+
+        print(self.ephem_objarray)
 
         sources = [s for s in sources if type(s) == str ] # filter list
         return sources
@@ -206,22 +203,14 @@ class SPB2Obs:
             self.obs.horizon = self.default_horizon # reset horizon back to the limb
             if rise > sett: # if source is setting first
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                if TESTING:
-                    gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
-                    print(gui_str)
-                    return gui_str
-                #elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                #    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
-                #    return gui_str
+                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
+                print(gui_str)
+                return gui_str
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                if TESTING:
-                    gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
-                    print(gui_str)
-                    return gui_str
-                #elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                #    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
-                #    return gui_str
+                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
+                print(gui_str)
+                return gui_str
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
             return ephem_obj
@@ -241,18 +230,13 @@ class SPB2Obs:
         altMoon = float(repr(self.m.alt)) * 180 / math.pi
         sunmask = altSun <= self.default_horizon * (180 / math.pi) - float(SUN_OFFSET) #set condition for sun
         moonmask = phaseMoon <= MOON_PERCENT/100 or altMoon <= self.default_horizon * (180/math.pi)
-        if TESTING:
-            if not sunmask:
-                print(altSun,"Warning: Sun is up!")
-            if not moonmask:
-                print(altMoon,"Moon is above horizon and the phase is greater than {0}%.".format(MOON_PERCENT))
-            SUN_FLAG = True if not sunmask else False
-            MOON_FLAG = True if not moonmask else False
-            print(SUN_FLAG,MOON_FLAG)
-        #else:
-        #    SUN_FLAG = True if not sunmask else False
-        #    MOON_FLAG = True if not moonmask else False
-
+        if not sunmask:
+            print(altSun,"Warning: Sun is up!")
+        if not moonmask:
+            print(altMoon,"Moon is above horizon and the phase is greater than {0}%.".format(MOON_PERCENT))
+        SUN_FLAG = True if not sunmask else False
+        MOON_FLAG = True if not moonmask else False
+        print(SUN_FLAG,MOON_FLAG)
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
     def set_observer(self, locArray):
@@ -294,8 +278,7 @@ class SPB2Obs:
         # Checking sun position
         sun = []
         self.obs.horizon =-1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation)))) - (math.pi/180)*float(SUN_OFFSET) # define horizon for the sun calculation
-        if TESTING:
-            print('sun',self.obs)
+        print('sun',self.obs)
         try:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
             self.dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
@@ -315,8 +298,7 @@ class SPB2Obs:
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
-        if TESTING:
-            print('moon',self.obs)
+        print('moon',self.obs)
         try:
             moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
             dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24 # convert to hours
@@ -560,8 +542,7 @@ class SAM:
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
             row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
-            if TESTING:
-                print(row)
+            print(row)
             self.listbox.insert(tk.END, row)
 
     def check_alert(self, current_time):
@@ -643,8 +624,6 @@ class SAM:
 
 if __name__ == '__main__':
     args = read_in_args() # read in user input arguments
-
-    TESTING = True # Testing flag will always be true it is for the best
 
     # Open the GUI
     GUI(args)
