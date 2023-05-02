@@ -27,8 +27,8 @@ MOON_PERCENT = 30.0
 SUN_FLAG  = False
 MOON_FLAG = False
 
-# Init alert flags for GNC alert
-GNC_FLAG = False
+# Init alert flags for GCN alert
+GCN_FLAG = False
 
 # Allows the use of greek letters
 
@@ -82,7 +82,6 @@ class SPB2Obs:
         velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
         headingAngCal = math.radians(90-headingAng)
         dt =  self.dt_srise * 3600 #sec
-        print('dt: ',dt)
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
@@ -164,8 +163,8 @@ class SPB2Obs:
         return [default_horizon, upperFoV, lowerFoV]
 
     @property
-    def GNC_alert(self):
-        return self.GNC_str
+    def GCN_alert(self):
+        return self.GCN_str
 
     def rad2degHMS(self, alpha):
         D = int(alpha * (180/math.pi))
@@ -301,7 +300,7 @@ class SPB2Obs:
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
             self.dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
-            self.dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
+            dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
         except ephem.AlwaysUpError:
             print("Warning: Sun is always up!")
             sun_rise = 'N/A\t\t'
@@ -312,7 +311,7 @@ class SPB2Obs:
             sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
         sun = [sun_rise,sun_set,self.s.az,self.s.alt]
-        dt_sun = [self.dt_srise,self.dt_sset]
+        dt_sun = [self.dt_srise,dt_sset]
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
@@ -387,33 +386,33 @@ class SPB2Obs:
                             'gcn.classic.text.ICECUBE_ASTROTRACK_GOLD',
                             'gcn.classic.text.ICECUBE_CASCADE',
                             'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
-        global GNC_FLAG
+        global GCN_FLAG
         while True:
             with open('GCNalerts.txt','a') as f:
                 for message in consumer.consume(timeout=1):
-                    GNC_FLAG = True
+                    GCN_FLAG = True
                     value = message.value().decode('ASCII')
                     print(value,file=f) # print alert to file
                     print('--------',file=f) # separate alerts
 
                     # create a ephem object
                     alert = value.split('\n')
-                    name_entry =  [match for match in alert if "TITLE" in match]
-                    name  = re.search(r'TITLE:\s*(.*)', name_entry).group(1) # name of object
-                    type_  = "f|G"                                        # dummy type
-                    ra_entry  = [match for match in alert if "GRB_RA" in match]
+                    name_entry = [match for match in alert if "TITLE" in match]
+                    name = re.search(r'TITLE:\s*(.*)', name_entry[0]).group(1) # name of object
+                    type_entry = [match for match in alert if "NOTICE_TYPE" in match]
+                    type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                    obj_type = "f|G"                                        # dummy type
+                    ra_entry = [match for match in alert if "GRB_RA" in match]
                     dec_entry = [match for match in alert if "GRB_DEC" in match]
-                    ra    = re.search(r'\d+.\d+', ra_entry).group()       # find J2000 RA
-                    dec   = re.search(r'\d+.\d+', dec_entry).group()       # find J2000 DEC
-                    mag   = "1.0"                                         # dummy magnitude
-                    in_obj = [name,type_,ra,dec,mag]
-                    obj = create_ephem_object(in_obj)
-                    self.GNC_str = str(obj)
-                    self.ephem_objarray.append(obj)
-                    if GNC_FLAG:
-                        GNC_FLAG = False
-
-
+                    ra = re.search(r'\d+.\d+', ra_entry[0]).group()       # find J2000 RA
+                    dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
+                    mag = "1.0"                                         # dummy magnitude
+                    in_obj = [name,obj_type,ra,dec,mag]
+                    obj = create_ephem_object(in_obj) # create an ephem object
+                    self.GCN_str = str(value) # output alert to string so it can alert user
+                    self.ephem_objarray.append(obj) # append new GCN obj to all other objects
+                    if GCN_FLAG:
+                        GCN_FLAG = False
 
 class SAM:
     def __init__(self, master,args):
@@ -583,8 +582,8 @@ class SAM:
             self.make_alert_win(sun_alert)
         if moon_alert: # if dt is less than 1.0000008 seconds
             self.make_alert_win(moon_alert)
-        if GNC_FLAG:
-            self.make_alert_win(self.observer.GNC_alert)
+        if GCN_FLAG:
+            self.make_alert_win(self.observer.GCN_alert)
 
     def change_color(self, object, color):
         object.config(fg= "{0}".format(color))
