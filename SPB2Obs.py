@@ -379,10 +379,11 @@ class SPB2Obs:
 
                     # create a ephem object
                     alert = value.split('\n')
-                    name_entry = [match for match in alert if "TITLE" in match]
-                    name = re.search(r'TITLE:\s*(.*)', name_entry[0]).group(1) # name of object
                     type_entry = [match for match in alert if "NOTICE_TYPE" in match]
                     type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                    trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
+                    trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
+                    name = type+ " " + trig # concatinate name/type to in case of updates
                     obj_type = "f|G"                                        # dummy type
                     ra_entry = [match for match in alert if "GRB_RA" in match]
                     dec_entry = [match for match in alert if "GRB_DEC" in match]
