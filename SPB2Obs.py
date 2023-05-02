@@ -210,18 +210,18 @@ class SPB2Obs:
                     gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
                     print(gui_str)
                     return gui_str
-                elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
-                    return gui_str
+                #elif alt <= self.upperfov and alt >= self.lowerfov and mask:
+                #    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
+                #    return gui_str
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if TESTING:
                     gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
                     print(gui_str)
                     return gui_str
-                elif alt <= self.upperfov and alt >= self.lowerfov and mask:
-                    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
-                    return gui_str
+                #elif alt <= self.upperfov and alt >= self.lowerfov and mask:
+                #    gui_str = "{0},{1},{2},0,0".format(ephem_obj.name,az,alt)
+                #    return gui_str
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
             return ephem_obj
@@ -249,9 +249,9 @@ class SPB2Obs:
             SUN_FLAG = True if not sunmask else False
             MOON_FLAG = True if not moonmask else False
             print(SUN_FLAG,MOON_FLAG)
-        else:
-            SUN_FLAG = True if not sunmask else False
-            MOON_FLAG = True if not moonmask else False
+        #else:
+        #    SUN_FLAG = True if not sunmask else False
+        #    MOON_FLAG = True if not moonmask else False
 
         return ephem_obj.az, ephem_obj.alt, sunmask*moonmask
 
@@ -643,10 +643,8 @@ class SAM:
 
 if __name__ == '__main__':
     args = read_in_args() # read in user input arguments
-    if args.test:
-        TESTING = True
-    else:
-        TESTING = False
+
+    TESTING = True # Testing flag will always be true it is for the best
 
     # Open the GUI
     GUI(args)
