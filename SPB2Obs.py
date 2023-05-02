@@ -570,17 +570,17 @@ class SAM:
         moon_alert = None
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
-        if float(dt_sun[0]) < 0.000277778: # if dt is less than 1.0000008 seconds
+        if float(dt_sun[0]) < 0.25: # if dt is less than 15 mins
             sun_alert = "Alert: Sun is rising over the limb!"
-        elif dt_sun[1] < 0.000277778: # if dt is less than 1.0000008 seconds
+        elif float(dt_sun[1]) < 0.25: # if dt is less than 15 mins
             sun_alert = "Alert: Sun is setting over the limb!"
-        elif dt_moon[0] < 0.000277778: # if dt is less than 1.0000008 seconds
+        elif float(dt_moon[0]) < 0.25: # if dt is less than 15 mins
             moon_alert = "Alert: Moon is rising over the limb!"
-        elif dt_moon[1] < 0.000277778: # if dt is less than 1.0000008 seconds
+        elif float(dt_moon[1]) < 0.25: # if dt is less than 15 mins
             moon_alert = "Alert: Moon is setting over the limb!"
         if sun_alert:
             self.make_alert_win(sun_alert)
-        if moon_alert: # if dt is less than 1.0000008 seconds
+        if moon_alert:
             self.make_alert_win(moon_alert)
         if GCN_FLAG:
             self.make_alert_win(self.observer.GCN_alert)
