@@ -242,3 +242,43 @@ COMMENTS:        The LC_URL file will not be created until ~15 min after the tri
 --------
 FindCoordinator response error: Local: Host resolution failure
 --------
+TITLE:           GCN/FERMI NOTICE
+NOTICE_DATE:     Mon 01 May 23 12:46:59 UT
+NOTICE_TYPE:     Fermi-GBM Flight Position
+RECORD_NUM:      48
+TRIGGER_NUM:     704637995
+GRB_RA:          311.283d {+20h 45m 08s} (J2000),
+                 311.616d {+20h 46m 28s} (current),
+                 310.569d {+20h 42m 16s} (1950)
+GRB_DEC:         -19.300d {-19d 18' 00"} (J2000),
+                 -19.214d {-19d 12' 49"} (current),
+                 -19.482d {-19d 28' 56"} (1950)
+GRB_ERROR:       26.50 [deg radius, statistical plus systematic]
+GRB_INTEN:       736 [cnts/sec]
+DATA_SIGNIF:     6.30 [sigma]
+INTEG_TIME:      0.016 [sec]
+GRB_DATE:        20065 TJD;   121 DOY;   23/05/01
+GRB_TIME:        45990.87 SOD {12:46:30.87} UT
+GRB_PHI:         255.00 [deg]
+GRB_THETA:        20.00 [deg]
+DATA_TIME_SCALE: 0.0160 [sec]
+HARD_RATIO:      0.00
+LOC_ALGORITHM:   3 (version number of)
+MOST_LIKELY:     100%  TGF
+2nd_MOST_LIKELY:   0%  n/a
+DETECTORS:       1,0,0, 1,0,1, 1,1,1, 1,1,1, 0,0,
+SUN_POSTN:        38.48d {+02h 33m 54s}  +15.09d {+15d 05' 39"}
+SUN_DIST:         92.05 [deg]   Sun_angle= 5.8 [hr] (West of Sun)
+MOON_POSTN:      173.23d {+11h 32m 54s}   +6.90d {+06d 53' 60"}
+MOON_DIST:       137.77 [deg]
+MOON_ILLUM:      82 [%]
+GAL_COORDS:       26.79,-33.40 [deg] galactic lon,lat of the burst (or transient)
+ECL_COORDS:      308.52, -1.21 [deg] ecliptic lon,lat of the burst (or transient)
+LC_URL:          http://heasarc.gsfc.nasa.gov/FTP/fermi/data/gbm/triggers/2023/bn230501532/quicklook/glg_lc_medres34_bn230501532.gif
+COMMENTS:        Fermi-GBM Flight-calculated Coordinates.  
+COMMENTS:        This trigger occurred at longitude,latitude = 264.00,9.67 [deg].  
+COMMENTS:        The LC_URL file will not be created until ~15 min after the trigger.  
+
+--------
+FindCoordinator response error: Local: Host resolution failure
+--------

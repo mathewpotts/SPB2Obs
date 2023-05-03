@@ -376,24 +376,27 @@ class SPB2Obs:
                     value = message.value().decode('ASCII')
                     print(value,file=f) # print alert to file
                     print('--------',file=f) # separate alerts
-
-                    # create a ephem object
-                    alert = value.split('\n')
-                    type_entry = [match for match in alert if "NOTICE_TYPE" in match]
-                    type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
-                    trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
-                    trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
-                    name = type+ " " + trig # concatinate name/type to in case of updates
-                    obj_type = "f|G"                                        # dummy type
-                    ra_entry = [match for match in alert if "GRB_RA" in match]
-                    dec_entry = [match for match in alert if "GRB_DEC" in match]
-                    ra = re.search(r'\d+.\d+', ra_entry[0]).group()       # find J2000 RA
-                    dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
-                    mag = "1.0"                                         # dummy magnitude
-                    in_obj = [name,obj_type,ra,dec,mag]
-                    obj = create_ephem_object(in_obj) # create an ephem object
-                    self.GCN_str = str(value) # output alert to string so it can alert user
-                    self.ephem_objarray.append(obj) # append new GCN obj to all other objects
+                    try:
+                        # create a ephem object
+                        alert = value.split('\n')
+                        type_entry = [match for match in alert if "NOTICE_TYPE" in match]
+                        type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                        trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
+                        trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
+                        name = type+ " " + trig # concatinate name/type to in case of updates
+                        obj_type = "f|G"                                        # dummy type
+                        ra_entry = [match for match in alert if "GRB_RA" in match]
+                        dec_entry = [match for match in alert if "GRB_DEC" in match]
+                        ra = re.search(r'\d+.\d+', ra_entry[0]).group()       # find J2000 RA
+                        dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
+                        mag = "1.0"                                         # dummy magnitude
+                        in_obj = [name,obj_type,ra,dec,mag]
+                        obj = create_ephem_object(in_obj) # create an ephem object
+                        self.GCN_str = str(value) # output alert to string so it can alert user
+                        self.ephem_objarray.append(obj) # append new GCN obj to all other objects
+                    except:
+                        self.GCN_str = "GCN host failure."
+                        print("GCN host failure.")
                     if GCN_FLAG:
                         GCN_FLAG = False
 
