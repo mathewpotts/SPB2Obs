@@ -397,8 +397,6 @@ class SPB2Obs:
                     except:
                         self.GCN_str = "GCN host failure."
                         print("GCN host failure.")
-                    if GCN_FLAG:
-                        GCN_FLAG = False
 
 class SAM:
     def __init__(self, master,args):
