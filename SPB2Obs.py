@@ -425,7 +425,7 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Balloon Velocity: \t\t Predicted Latitude: \t\t Predicted Longitude:\n", font=("Arial",12))
+        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Balloon Velocity: \t\t Predicted Sunrise Latitude: \t\t Predicted Sunrise Longitude:\n", font=("Arial",12))
         self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
@@ -497,9 +497,9 @@ class SAM:
         SUN_OFFSET = self.e.get()
         print("\n\n",SUN_OFFSET)
 
-        # Check for an alert every 60 seconds
+        # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
         if int(time.strftime("%S")) == 0:
-            b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc) # run GCN alerts in background
+            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread) 
             b.start()
 
         self.check_alert(current_time)
@@ -512,18 +512,23 @@ class SAM:
 
         # Update the gps location of payload label
         self.update_gpsLoc()
-
-        # Update the projected trajectory
-        self.update_proj_traj()
-
+            
         # Update the horizons
         self.update_horizons()
 
         # Schedule the next update in 1 second
         self.master.after(1000, self.update_time)
 
+    def update_GPS_Proj_Traj_Thread(self):
+        # Start web scrap
+        b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc) 
+        b.start()
+        b.join() # wait till web scrap is complete
+        # Update the projected trajectory
+        self.update_proj_traj()
+
     def update_proj_traj(self):
-        proj_traj = "Projected Trajectory - Balloon Velocity: {0} \t\t Predicted Latitude: {1:.4f}\u00b0\t\t Predicted Longitude: {2:.4f}\u00b0\n".format(*self.observer.balloondirection)
+        proj_traj = "Projected Trajectory - Balloon Velocity: {0} \t Predicted Sunrise Latitude: {1:.4f}\u00b0\t Predicted Sunrise Longitude: {2:.4f}\u00b0\n".format(*self.observer.balloondirection)
         self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
@@ -588,14 +593,14 @@ class SAM:
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
         if SUN_FLAG:
-            sun_str = sun_str + "\tSUN IS UP!"
+            sun_str = sun_str + "\t\t\tSUN IS UP!"
             self.change_color(self.sun_schedule, "red")
         else:
             self.change_color(self.sun_schedule, "black")
         self.sun_schedule.config(text=sun_str)
         dt_sun_str = "     \t \u0394t to sunrise: {0:.2f} hr\t \u0394t to sunset: {1:.2f} hr".format(*dt_sun)
         self.dt_sun.config(text=dt_sun_str)
-        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}% ".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
+        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4}% ".format(moon[0],moon[1],moon[2],moon[3],int(moon[4]*100))
         if MOON_FLAG:
             moon_str = moon_str + "\tMOON IS UP!"
             self.change_color(self.moon_schedule, "red")
