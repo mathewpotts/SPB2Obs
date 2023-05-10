@@ -586,20 +586,22 @@ class SAM:
 
     def check_sun_and_moon(self, current_time):
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
-        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3}".format(sun[0], sun[1],sun[2],sun[3])
-        self.sun_schedule.config(text=sun_str)
+        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
         if SUN_FLAG:
+            sun_str = sun_str + "\tSUN IS UP!"
             self.change_color(self.sun_schedule, "red")
         else:
             self.change_color(self.sun_schedule, "black")
+        self.sun_schedule.config(text=sun_str)
         dt_sun_str = "     \t \u0394t to sunrise: {0:.2f} hr\t \u0394t to sunset: {1:.2f} hr".format(*dt_sun)
         self.dt_sun.config(text=dt_sun_str)
-        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}%".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
-        self.moon_schedule.config(text=moon_str)
+        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4:.2f}% ".format(moon[0],moon[1],moon[2],moon[3],moon[4]*100)
         if MOON_FLAG:
+            moon_str = moon_str + "\tMOON IS UP!"
             self.change_color(self.moon_schedule, "red")
         else:
             self.change_color(self.moon_schedule, "black")
+        self.moon_schedule.config(text=moon_str)
         dt_moon_str = "     \t \u0394t to moonrise: {0:.2f} hr\t \u0394t to moonset: {1:.2f} hr".format(*dt_moon)
         self.dt_moon.config(text=dt_moon_str)
 
