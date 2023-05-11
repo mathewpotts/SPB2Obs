@@ -43,7 +43,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("1200x500") # set default window size
+    root.geometry("1550x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -86,6 +86,9 @@ class SPB2Obs:
         b = (velocity * dt)/(ephem.earth_radius+elevation)
         finalLat = math.asin(math.sin(headingAngCal)*math.sin(b))
         finalLon = math.acos(math.cos(b)/math.cos(finalLat))
+        if math.degrees(initLon + finalLon) > 180:
+            # E+ but W is negative, this correct for edge case where balloon is at the end of E longs
+            finalLon -= 2*math.pi
         return math.degrees(initLat + finalLat), math.degrees(initLon + finalLon)
 
     def horizons(self):
@@ -210,7 +213,7 @@ class SPB2Obs:
                     self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
+                gui_str = "{0},{1},{2},0,{3},0,{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first
@@ -222,7 +225,7 @@ class SPB2Obs:
                     self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
+                gui_str = "{0},{1},{2},0,{3},0,{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
         except ephem.AlwaysUpError:
@@ -395,14 +398,14 @@ class SPB2Obs:
                     alert = value.split('\n')
                     type_entry = [match for match in alert if "NOTICE_TYPE" in match]
                     type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
-                    if "Fermi" or "Swift" in type:
+                    if ("Fermi" or "Swift") in type:
                         trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
                     else:
                         trig_entry = [match for match in alert if "EVENT_NUM" in match]
                     trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
                     name = type+ " " + trig # concatinate name/type to in case of updates
                     obj_type = "f|G" # dummy type
-                    if "Fermi" or "Swift" in type:
+                    if ("Fermi" or "Swift") in type:
                         ra_entry = [match for match in alert if "GRB_RA" in match]
                         dec_entry = [match for match in alert if "GRB_DEC" in match]
                     else:
@@ -412,7 +415,7 @@ class SPB2Obs:
                     dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
                     mag = "1.0"                                         # dummy magnitude
                     in_obj = [name,obj_type,ra,dec,mag]
-                    obj = create_ephem_object(in_obj) # create an ephem object
+                    obj = self.create_ephem_object(in_obj) # create an ephem object
                     self.GCN_str = str(value) # output alert to string so it can alert user
                     print(self.GCN_str)
                     self.ephem_objarray.append(obj) # append new GCN obj to all other objects
@@ -432,8 +435,8 @@ class SAM:
         b.start()
 
         self.sources = [
-            ["Object", "Azimuth", "Altitude","Enters FoV","Exits FoV"],
-            ["------", "-------", "--------","--------","--------"]
+            ["Object", "Azimuth", "Altitude","Enter Azimuth","Enters FoV","Exit Azimuth","Exits FoV"],
+            ["------", "-------", "--------","--------","--------","--------","--------"]
         ]
         self.master.title("Situational Awareness Monitor (SAM)")
 
@@ -488,7 +491,7 @@ class SAM:
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
-            row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*sourcerow)
+            row = "{: >20} {: >20} {: >20} {: >20} {: >20} {: >20} {: >20}".format(*sourcerow)
             self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
@@ -572,13 +575,13 @@ class SAM:
         sources = [x[0] for x in sources]
 
         # Sort list by order of entering the FoV
-        sources = sorted(sources, key=lambda x: x.split(",")[3])
+        sources = sorted(sources, key=lambda x: x.split(",")[4])
         
         # Update sources list
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
+            row = "{: >20} {: >20} {: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
             print(row)
             self.listbox.insert(tk.END, row)
             
