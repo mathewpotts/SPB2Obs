@@ -205,8 +205,8 @@ class SPB2Obs:
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if alt <= self.upperfov and alt >= self.lowerfov: #and mask:
                     inFOV = True
-                    self.obs.horizon = self.upperfov
-                    upper_set = self.obs.previous_rising(ephem_obj)
+                    self.obs.horizon = self.lowerfov
+                    lower_set = self.obs.previous_rising(ephem_obj)
                     self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
@@ -508,8 +508,7 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 3700))
-        
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 3000)) # time travel
         #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
