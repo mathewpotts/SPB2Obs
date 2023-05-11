@@ -508,8 +508,8 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 3000)) # time travel
-        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
+        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 3000)) # time travel
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "\n")
