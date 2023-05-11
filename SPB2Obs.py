@@ -203,20 +203,30 @@ class SPB2Obs:
             self.obs.horizon = self.default_horizon # reset horizon back to the limb
             if rise > sett: # if source is setting first
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
-                if alt <= self.upperfov and alt >= self.lowerfov and mask:
+                if alt <= self.upperfov and alt >= self.lowerfov: #and mask:
                     inFOV = True
+                    self.obs.horizon = self.lowerfov
+                    lower_set = self.obs.previous_rising(ephem_obj)
+                    self.obs.horizon = self.upperfov
+                    upper_set = self.obs.previous_rising(ephem_obj)
+                    self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
+                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
-                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
-                if alt <= self.upperfov and alt >= self.lowerfov and mask:
+                if alt <= self.upperfov and alt >= self.lowerfov: # and mask:
                     inFOV = True
+                    self.obs.horizon = self.lowerfov
+                    lower_rise = self.obs.previous_rising(ephem_obj)
+                    self.obs.horizon = self.upperfov
+                    upper_rise = self.obs.previous_rising(ephem_obj)
+                    self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
+                gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
         except ephem.AlwaysUpError:
@@ -384,28 +394,35 @@ class SPB2Obs:
                     value = message.value().decode('ASCII')
                     print(value,file=f) # print alert to file
                     print('--------',file=f) # separate alerts
-                    try:
-                        # create a ephem object
-                        alert = value.split('\n')
-                        type_entry = [match for match in alert if "NOTICE_TYPE" in match]
-                        type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                    #try:
+                    # create a ephem object
+                    alert = value.split('\n')
+                    type_entry = [match for match in alert if "NOTICE_TYPE" in match]
+                    type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                    if "Fermi" or "Swift" in type:
                         trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
-                        trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
-                        name = type+ " " + trig # concatinate name/type to in case of updates
-                        obj_type = "f|G"                                        # dummy type
+                    else:
+                        trig_entry = [match for match in alert if "EVENT_NUM" in match]
+                    trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
+                    name = type+ " " + trig # concatinate name/type to in case of updates
+                    obj_type = "f|G" # dummy type
+                    if "Fermi" or "Swift" in type:
                         ra_entry = [match for match in alert if "GRB_RA" in match]
                         dec_entry = [match for match in alert if "GRB_DEC" in match]
-                        ra = re.search(r'\d+.\d+', ra_entry[0]).group()       # find J2000 RA
-                        dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
-                        mag = "1.0"                                         # dummy magnitude
-                        in_obj = [name,obj_type,ra,dec,mag]
-                        obj = create_ephem_object(in_obj) # create an ephem object
-                        self.GCN_str = str(value) # output alert to string so it can alert user
-                        print(self.GCN_str)
-                        self.ephem_objarray.append(obj) # append new GCN obj to all other objects
-                    except:
-                        self.GCN_str = "GCN host failure."
-                        print("GCN host failure.")
+                    else:
+                        ra_entry = [match for match in alert if "SRC_RA" in match]
+                        dec_entry = [match for match in alert if "SRC_RA" in match]
+                    ra = re.search(r'\d+.\d+', ra_entry[0]).group()       # find J2000 RA
+                    dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
+                    mag = "1.0"                                         # dummy magnitude
+                    in_obj = [name,obj_type,ra,dec,mag]
+                    obj = create_ephem_object(in_obj) # create an ephem object
+                    self.GCN_str = str(value) # output alert to string so it can alert user
+                    print(self.GCN_str)
+                    self.ephem_objarray.append(obj) # append new GCN obj to all other objects
+                    #except:
+                    #    self.GCN_str = "GCN host failure."
+                    #    print("GCN host failure.")
 
 class SAM:
     def __init__(self, master,args):
@@ -495,8 +512,9 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        #new_time = time.gmtime(calendar.timegm(time.gmtime()) + 3350)
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 3700))
+        
+        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "\n")
@@ -572,7 +590,7 @@ class SAM:
         # If the source is in the FoV change color of source background
         for i,s in enumerate(self.sources):
             if inFOV[i]:
-                listbox.itemconfig(i,{'bg':'khaki3'}) 
+                self.listbox.itemconfig(i+1,{'bg':'khaki3'}) 
 
     def check_alert(self, current_time):
         # init alert bool
@@ -593,6 +611,7 @@ class SAM:
         if moon_alert:
             self.make_alert_win(moon_alert)
         if GCN_FLAG:
+            time.sleep(1)
             self.make_alert_win(self.observer.GCN_alert)
 
     def change_color(self, object, color):
@@ -631,26 +650,6 @@ class SAM:
         self.moon_schedule.config(text=moon_str)
         dt_moon_str = "     \t \u0394t to moonrise: {0:.2f} hr\t \u0394t to moonset: {1:.2f} hr".format(*dt_moon)
         self.dt_moon.config(text=dt_moon_str)
-
-    def open_window(self):
-        # Create a new window
-        top = tk.Toplevel(self.master)
-        top.title("Schedule")
-
-        top.minsize(500, 200)
-
-        # Create a label to hold the image
-        image_label = tk.Label(top)
-        image_label.pack()
-
-        # Load the temporary image and resize it to fit the new window
-        image = Image.open("temp.png")
-        image = image.resize((700, 500))
-        photo = ImageTk.PhotoImage(image)
-
-        # Update the image label with the loaded image
-        image_label.config(image=photo)
-        image_label.image = photo
 
 
 if __name__ == '__main__':
