@@ -205,8 +205,6 @@ class SPB2Obs:
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 if alt <= self.upperfov and alt >= self.lowerfov: #and mask:
                     inFOV = True
-                    self.obs.horizon = self.lowerfov
-                    lower_set = self.obs.previous_rising(ephem_obj)
                     self.obs.horizon = self.upperfov
                     upper_set = self.obs.previous_rising(ephem_obj)
                     self.obs.horizon = self.default_horizon # reset horizon back to the limb
@@ -221,8 +219,6 @@ class SPB2Obs:
                     inFOV = True
                     self.obs.horizon = self.lowerfov
                     lower_rise = self.obs.previous_rising(ephem_obj)
-                    self.obs.horizon = self.upperfov
-                    upper_rise = self.obs.previous_rising(ephem_obj)
                     self.obs.horizon = self.default_horizon # reset horizon back to the limb
                 else:
                     inFOV = False
