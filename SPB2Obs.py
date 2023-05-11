@@ -43,7 +43,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("1150x500") # set default window size
+    root.geometry("1200x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -178,13 +178,13 @@ class SPB2Obs:
         # remove objects that will never be in FoV
         filter_list = []
         for i,s in enumerate(sources):
-            if s in self.ephem_objarray:
+            if s[0] in self.ephem_objarray:
                 filter_list.append(i)
         self.ephem_objarray = [obj for i,obj in enumerate(self.ephem_objarray) if i not in filter_list]
 
         print(self.ephem_objarray)
 
-        sources = [s for s in sources if type(s) == str ] # filter list
+        sources = [s for s in sources if type(s[0]) == str ] # filter list
         return sources
 
     def objs_in_fov(self, utctime, ephem_obj):
@@ -204,19 +204,27 @@ class SPB2Obs:
             if rise > sett: # if source is setting first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_set), str(upper_set))
-                print(gui_str)
-                return gui_str
+                if alt <= self.upperfov and alt >= self.lowerfov and mask:
+                    inFOV = True
+                else:
+                    inFOV = False
+                print(gui_str, inFOV)
+                return [gui_str, inFOV]
             else: # if source is rising first
                 az,alt,mask = self.masks(ephem_obj, utctime)
                 gui_str = "{0},{1},{2},{3},{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
-                print(gui_str)
-                return gui_str
+                if alt <= self.upperfov and alt >= self.lowerfov and mask:
+                    inFOV = True
+                else:
+                    inFOV = False
+                print(gui_str, inFOV)
+                return [gui_str, inFOV]
         except ephem.AlwaysUpError:
             print("Warning: Object of interest {0} is always up always up, and is out of the FoV.".format(ephem_obj))
-            return ephem_obj
+            return [ephem_obj, False]
         except ephem.NeverUpError:
             print("Warning: Object of interest {0} is never up, and is out of the FoV.".format(ephem_obj))
-            return ephem_obj
+            return [ephem_obj, False]
 
     def masks(self, ephem_obj, utctime):
         global SUN_FLAG
@@ -393,6 +401,7 @@ class SPB2Obs:
                         in_obj = [name,obj_type,ra,dec,mag]
                         obj = create_ephem_object(in_obj) # create an ephem object
                         self.GCN_str = str(value) # output alert to string so it can alert user
+                        print(self.GCN_str)
                         self.ephem_objarray.append(obj) # append new GCN obj to all other objects
                     except:
                         self.GCN_str = "GCN host failure."
@@ -460,8 +469,8 @@ class SAM:
         self.Entry_.pack(side=tk.LEFT, anchor="w")
 
         # Create a button that opens another window
-        self.button = tk.Button(self.master, text="Schedule", command=self.open_window)
-        self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
+        #self.button = tk.Button(self.master, text="Schedule", command=self.open_window)
+        #self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
 
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
@@ -543,7 +552,15 @@ class SAM:
     def check_sources(self, current_time):
         # Check if sources are in the fov or close to it
         sources = self.observer.check_fov(current_time)
+        print(sources)
+        
+        # Split the list into two
+        inFOV = [x[1] for x in sources]
+        sources = [x[0] for x in sources]
 
+        # Sort list by order of entering the FoV
+        sources = sorted(sources, key=lambda x: x.split(",")[3])
+        
         # Update sources list
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
@@ -551,6 +568,11 @@ class SAM:
             row = "{: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
             print(row)
             self.listbox.insert(tk.END, row)
+            
+        # If the source is in the FoV change color of source background
+        for i,s in enumerate(self.sources):
+            if inFOV[i]:
+                listbox.itemconfig(i,{'bg':'khaki3'}) 
 
     def check_alert(self, current_time):
         # init alert bool
@@ -559,13 +581,13 @@ class SAM:
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         if float(dt_sun[0]) < 0.25 and float(dt_sun[0]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "Alert: Sun is rising over the limb!"
+            sun_alert = "{0} Alert: Sun is rising over the limb in 15 minutes!".format(current_time)
         elif float(dt_sun[1]) < 0.25 and float(dt_sun[1]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "Alert: Sun is setting over the limb!"
+            sun_alert = "{0} Alert: Sun is setting over the limb in 15 minutes!".format(current_time)
         elif float(dt_moon[0]) < 0.25 and float(dt_moon[0]) > 0.249722222: # if dt at 15 mins
-            moon_alert = "Alert: Moon is rising over the limb!"
+            moon_alert = "{0} Alert: Moon is rising over the limb in 15 minutes!".format(current_time)
         elif float(dt_moon[1]) < 0.25 and float(dt_moon[1]) > 0.249722222: # if dt at 15 mins
-            moon_alert = "Alert: Moon is setting over the limb!"
+            moon_alert = "{0} Alert: Moon is setting over the limb in 15 minutes!".format(current_time)
         if sun_alert:
             self.make_alert_win(sun_alert)
         if moon_alert:
