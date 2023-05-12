@@ -198,15 +198,23 @@ class SPB2Obs:
             # at upper FoV
             self.obs.horizon = self.upperfov
             upper_rise = self.obs.next_rising(ephem_obj)
+            upper_rise_az = ephem_obj.az
             upper_set  = self.obs.next_setting(ephem_obj)
+            upper_set_az = ephem_obj.az
             pre_upper_rise = self.obs.previous_rising(ephem_obj)
+            pre_upper_rise_az = ephem_obj.az
             pre_upper_set = self.obs.previous_setting(ephem_obj)
+            pre_upper_set_az = ephem_obj.az
             # at lower FoV
             self.obs.horizon = self.lowerfov
             lower_rise = self.obs.next_rising(ephem_obj)
+            lower_rise_az = ephem_obj.az
             lower_set  = self.obs.next_setting(ephem_obj)
+            lower_set_az = ephem_obj.az
             pre_lower_rise = self.obs.previous_rising(ephem_obj)
+            pre_lower_rise_az = ephem_obj.az
             pre_lower_set = self.obs.previous_setting(ephem_obj)
+            pre_lower_set_az = ephem_obj.az
             self.obs.horizon = self.default_horizon # reset horizon back to the limb
             print("dt: ", lower_set - self.obs.date)
             az,alt,mask = self.masks(ephem_obj, utctime)
@@ -215,12 +223,14 @@ class SPB2Obs:
                     inFOV = True
                     if (upper_rise - self.obs.date) < 0.08 and (upper_rise - self.obs.date) > 0: # if obj is rising but past default horizon
                         upper_set = pre_upper_rise
+                        upper_set_az = pre_upper_rise_az
                         lower_set = pre_lower_rise
+                        lower_set_az = pre_lower_rise_az
                     else:
                         upper_set = pre_upper_set
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},0,{3},0,{4}".format(ephem_obj.name,az,alt,str(upper_set),str(lower_set))
+                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,az,alt,str(upper_set_az),str(upper_set),str(lower_set_az),str(lower_set))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first... maybe
@@ -228,12 +238,14 @@ class SPB2Obs:
                     inFOV = True
                     if (lower_set - self.obs.date) < 0.08 and (lower_set - self.obs.date) > 0: # if obj is setting but past default horizon
                         lower_rise = pre_upper_set
+                        lower_rise_az = pre_upper_set_az
                         upper_rise = pre_lower_set
+                        upper_rise_az = pre_lower_set_az
                     else:
                         lower_rise = pre_lower_rise
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},0,{3},0,{4}".format(ephem_obj.name,az,alt,str(lower_rise),str(upper_rise))
+                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,az,alt,str(lower_rise_az),str(lower_rise),str(upper_rise_az),str(upper_rise))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
         except ephem.AlwaysUpError:
@@ -354,12 +366,12 @@ class SPB2Obs:
             self.PreObs.lat = math.radians(preLat_rise)
             self.PreObs.long = math.radians(preLong_rise)
             print("\n\nPredicted rise: {0} {1} \n\nPredicted set: {2} {3}".format(preLat_rise,preLong_rise,preLat_set,preLong_set),self.PreObs)
-            moon_rise = self.PreObs.next_rising(self.s)
+            moon_rise = self.PreObs.next_rising(self.m)
             self.dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24
             # get moon set times using predicted location
             self.PreObs.lat = math.radians(preLat_set)
             self.PreObs.long = math.radians(preLong_set)
-            moon_set = self.PreObs.next_setting(self.s)
+            moon_set = self.PreObs.next_setting(self.m)
             self.dt_mset = abs(ephem.Date(utctime) - moon_set) * 24
         except ephem.AlwaysUpError:
             print("Warning: Moon is always up!")
