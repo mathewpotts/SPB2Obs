@@ -76,11 +76,11 @@ class SPB2Obs:
         # init wind
         self.balloondir = "0 Knots @ 0\u00b0"
 
-    def payloadDrift(self,initLat, initLon, wind, elevation):
-        headingAng = float(wind.split(' @ ')[0].replace('Knots',''))
-        velocity = float(wind.split(' @ ')[1].replace('\u00b0', ''))
+    def payloadDrift(self,initLat, initLon, balloon, dt, elevation):
+        headingAng = float(balloon.split(' @ ')[0].replace('Knots',''))
+        velocity = float(balloon.split(' @ ')[1].replace('\u00b0', ''))
         headingAngCal = math.radians(90-headingAng)
-        dt =  self.dt_srise * 3600 #sec
+        #dt =  self.dt_srise * 3600 #sec
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
@@ -148,7 +148,7 @@ class SPB2Obs:
     @property
     def balloondirection(self):
         print(float(self.obs.lat),float(self.obs.long))
-        preLat,preLong = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.balloondir,self.elevation)
+        preLat,preLong = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.balloondir,self.dt_srise,self.elevation)
         return [self.balloondir,preLat,preLong]
 
     @property
@@ -211,7 +211,7 @@ class SPB2Obs:
             print("dt: ", lower_set - self.obs.date)
             az,alt,mask = self.masks(ephem_obj, utctime)
             if rise > sett: # if source is setting first... maybe
-                if alt <= self.upperfov and alt >= self.lowerfov: #and mask:
+                if alt <= self.upperfov and alt >= self.lowerfov and mask:
                     inFOV = True
                     if (upper_rise - self.obs.date) < 0.08 and (upper_rise - self.obs.date) > 0: # if obj is rising but past default horizon
                         upper_set = pre_upper_rise
@@ -224,7 +224,7 @@ class SPB2Obs:
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first... maybe
-                if alt <= self.upperfov and alt >= self.lowerfov: # and mask:
+                if alt <= self.upperfov and alt >= self.lowerfov and mask:
                     inFOV = True
                     if (lower_set - self.obs.date) < 0.08 and (lower_set - self.obs.date) > 0: # if obj is setting but past default horizon
                         lower_rise = pre_upper_set
@@ -305,10 +305,31 @@ class SPB2Obs:
         self.obs.horizon =-1*((np.pi/2) - np.arcsin(ephem.earth_radius/(ephem.earth_radius+float(self.elevation)))) - (math.pi/180)*float(SUN_OFFSET) # define horizon for the sun calculation
         print('sun',self.obs)
         try:
+            # Use this as a first attempt at calculating the sun rise/set time
             sun_rise = self.obs.next_rising(self.s) # sun rise at defined horizon
             self.dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24 # convert to hours
             sun_set = self.obs.next_setting(self.s) # sun set at defined horizon
-            dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
+            self.dt_sset = abs(ephem.Date(utctime) - sun_set) * 24 # convert to hours
+            # Then use these values to recalculate the sun rise/set times given predicted location
+            preLat_rise, preLong_rise = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.balloondir,self.dt_srise,self.elevation)
+            preLat_set, preLong_set = self.payloadDrift(float(self.obs.lat),float(self.obs.long),self.balloondir,self.dt_sset,self.elevation)
+            # Define Prediction observer
+            self.PreObs = ephem.Observer()
+            self.PreObs.date = self.obs.date
+            self.PreObs.elevation = 0
+            self.PreObs.pressure = 0 # turn off refraction
+            self.PreObs.horizon = self.obs.horizon
+            # get sun rise time using predicted location
+            self.PreObs.lat = math.radians(preLat_rise)
+            self.PreObs.long = math.radians(preLong_rise)
+            print("\n\nPredicted rise: {0} {1} \n\nPredicted set: {2} {3}".format(preLat_rise,preLong_rise,preLat_set,preLong_set),self.PreObs)
+            sun_rise = self.PreObs.next_rising(self.s)
+            self.dt_srise = abs(ephem.Date(utctime) - sun_rise) * 24
+            # get sun set times using predicted location
+            self.PreObs.lat = math.radians(preLat_set)
+            self.PreObs.long = math.radians(preLong_set)
+            sun_set = self.PreObs.next_setting(self.s)
+            self.dt_sset = abs(ephem.Date(utctime) - sun_set) * 24
         except ephem.AlwaysUpError:
             print("Warning: Sun is always up!")
             sun_rise = 'N/A\t\t'
@@ -319,16 +340,27 @@ class SPB2Obs:
             sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
         sun = [sun_rise,sun_set,self.s.az,self.s.alt]
-        dt_sun = [self.dt_srise,dt_sset]
+        dt_sun = [self.dt_srise,self.dt_sset]
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
         print('moon',self.obs)
         try:
             moon_rise = self.obs.next_rising(self.m) # moon rise at defined horizon
-            dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24 # convert to hours
+            self.dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24 # convert to hours
             moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
-            dt_mset = abs(ephem.Date(utctime) - moon_set) * 24 # convert to hours
+            self.dt_mset = abs(ephem.Date(utctime) - moon_set) * 24 # convert to hours
+            # get moon rise time using predicted location
+            self.PreObs.lat = math.radians(preLat_rise)
+            self.PreObs.long = math.radians(preLong_rise)
+            print("\n\nPredicted rise: {0} {1} \n\nPredicted set: {2} {3}".format(preLat_rise,preLong_rise,preLat_set,preLong_set),self.PreObs)
+            moon_rise = self.PreObs.next_rising(self.s)
+            self.dt_mrise = abs(ephem.Date(utctime) - moon_rise) * 24
+            # get moon set times using predicted location
+            self.PreObs.lat = math.radians(preLat_set)
+            self.PreObs.long = math.radians(preLong_set)
+            moon_set = self.PreObs.next_setting(self.s)
+            self.dt_mset = abs(ephem.Date(utctime) - moon_set) * 24
         except ephem.AlwaysUpError:
             print("Warning: Moon is always up!")
             moon_rise = 'N/A\t\t'
@@ -339,7 +371,7 @@ class SPB2Obs:
             moon_set = 'N/A\t\t'
         self.m.compute(self.obs) # compute the location of the moon relative to observer
         moon = [moon_rise,moon_set,self.m.az,self.m.alt,self.m.moon_phase]
-        dt_moon = [dt_mrise,dt_mset]
+        dt_moon = [self.dt_mrise,self.dt_mset]
         return sun,moon,dt_sun,dt_moon
 
     def gcn_alerts(self):
@@ -456,7 +488,7 @@ class SAM:
         self.time_label.pack(side=tk.TOP)
 
         # Create a label for the gps location
-        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3} m\n".format(*self.observer.gps_loc)
+        gps_loc = "Balloon Location - \t Latitude: {1} \t Longitude: {2} \t Height: {3} m\n".format(*self.observer.gps_loc)
         self.gps_loc = tk.Label(self.master, text=gps_loc, font=("Arial",12))
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
@@ -495,10 +527,6 @@ class SAM:
         self.Entry_ = tk.Label(self.master, text="\u00b0", font=("Arial",12))
         self.Entry_.pack(side=tk.LEFT, anchor="w")
 
-        # Create a button that opens another window
-        #self.button = tk.Button(self.master, text="Schedule", command=self.open_window)
-        #self.button.pack(side=tk.BOTTOM,fill=tk.BOTH,expand=True)
-
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
@@ -522,11 +550,11 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 1100)) # time travel
-        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
+        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 1100)) # time travel
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
-        self.time_label.config(text="Current Time: " + current_time + "\n")
+        self.time_label.config(text="Current Time: " + current_time + "Z\n")
 
         # Update the SUN_OFFSET based on input of entry box
         global SUN_OFFSET
@@ -535,7 +563,7 @@ class SAM:
 
         # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
         if int(time.strftime("%S")) == 0:
-            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread) 
+            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
             b.start()
 
         self.check_alert(current_time)
@@ -548,7 +576,7 @@ class SAM:
 
         # Update the gps location of payload label
         self.update_gpsLoc()
-            
+
         # Update the horizons
         self.update_horizons()
 
@@ -557,7 +585,7 @@ class SAM:
 
     def update_GPS_Proj_Traj_Thread(self):
         # Start web scrap
-        b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc) 
+        b = threading.Thread(name='update_gpsLoc', target = self.observer.update_gpsLoc)
         b.start()
         b.join() # wait till web scrap is complete
         # Update the projected trajectory
@@ -572,7 +600,7 @@ class SAM:
         self.horizon.config(text=horizon)
 
     def update_gpsLoc(self):
-        gps_loc = "Observer -    Time: {0}         Latitude: {1}         Longitude: {2}         Height: {3:.2f} m\n".format(*self.observer.gps_loc)
+        gps_loc = "Balloon Location - \t Latitude: {1} \t Longitude: {2} \t Height: {3:.2f} m\n".format(*self.observer.gps_loc)
         self.gps_loc.config(text=gps_loc)
         return True
 
@@ -583,11 +611,11 @@ class SAM:
 
         # Sort list by order of entering the FoV
         sources = sorted(sources, key=lambda x: x[0].split(",")[4])
-        
+
         # Split the list into two
         inFOV = [x[1] for x in sources]
         sources = [x[0] for x in sources]
-        
+
         # Update sources list
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
@@ -595,11 +623,11 @@ class SAM:
             row = "{: >20} {: >20} {: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
             print(row)
             self.listbox.insert(tk.END, row)
-            
+
         # If the source is in the FoV change color of source background
         for i,s in enumerate(self.sources):
             if inFOV[i]:
-                self.listbox.itemconfig(i+2,{'bg':'khaki3'}) 
+                self.listbox.itemconfig(i+2,{'bg':'khaki3'})
 
     def check_alert(self, current_time):
         # init alert bool
@@ -640,7 +668,7 @@ class SAM:
         ack_button.pack(side=tk.BOTTOM)
 
     def check_sun_and_moon(self, current_time):
-        sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
+        sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time) # need to change this so that it utilizes predicted location
         sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
         if SUN_FLAG:
             sun_str = sun_str + "\t\t\tSUN IS UP!"
