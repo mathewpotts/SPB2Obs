@@ -67,8 +67,9 @@ class SPB2Obs:
         self.lowerfov = self.default_horizon + (math.pi/180)*-5.0
 
         # Flight location Equatorial
-        self.url = "https://www.csbf.nasa.gov/map/balloon10/flight728NT.htm"
-
+        #self.url = "https://www.csbf.nasa.gov/map/balloon10/flight728NT.htm" # SuperBit
+        self.url = "https://www.csbf.nasa.gov/map/balloon8/flight729NT.htm" # SPB2
+        
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
