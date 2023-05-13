@@ -450,13 +450,18 @@ class SPB2Obs:
                         # create a ephem object
                         alert = value.split('\n')
                         type_entry = [match for match in alert if "NOTICE_TYPE" in match]
-                        type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1) #notice type
+                        type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1).split()[0] #notice type 
                         if ("Fermi" or "Swift") in type:
                             trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
                         else:
                             trig_entry = [match for match in alert if "EVENT_NUM" in match]
                         trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
-                        name = type + trig # concatinate name/type to in case of updates
+                        name = type + " " + trig # concatinate name/type to in case of updates
+                        # Edit the xephem object to update its position
+                        #for obj in self.ephem_objarray:
+                        #    if name in self.obj.name:
+                        #        obj._ra =
+                        #        obj._dec
                         obj_type = "f|G" # dummy type
                         if ("Fermi" or "Swift") in type:
                             ra_entry = [match for match in alert if "GRB_RA" in match]
@@ -649,9 +654,9 @@ class SAM:
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         if float(dt_sun[0]) < 0.25 and float(dt_sun[0]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "{0} Alert: Sun is rising over the limb in 15 minutes!".format(current_time)
+            sun_alert = "{0} Alert: Sun is rising over the limb + {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
         elif float(dt_sun[1]) < 0.25 and float(dt_sun[1]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "{0} Alert: Sun is setting over the limb in 15 minutes!".format(current_time)
+            sun_alert = "{0} Alert: Sun is setting over the limb + {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
         elif float(dt_moon[0]) < 0.25 and float(dt_moon[0]) > 0.249722222: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is rising over the limb in 15 minutes!".format(current_time)
         elif float(dt_moon[1]) < 0.25 and float(dt_moon[1]) > 0.249722222: # if dt at 15 mins
@@ -682,7 +687,7 @@ class SAM:
 
     def check_sun_and_moon(self, current_time):
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time) # need to change this so that it utilizes predicted location
-        sun_str = "Sun - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
+        sun_str = "Sun - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
         if SUN_FLAG:
             sun_str = sun_str + "\t\t\tSUN IS UP!"
             self.change_color(self.sun_schedule, "red")
@@ -691,7 +696,7 @@ class SAM:
         self.sun_schedule.config(text=sun_str)
         dt_sun_str = "     \t \u0394t to sunrise: {0:.2f} hr\t \u0394t to sunset: {1:.2f} hr".format(*dt_sun)
         self.dt_sun.config(text=dt_sun_str)
-        moon_str = "Moon - \t Rise: {0} \t Set: {1} \t Azi: {2} \t Alt: {3} \t Phase: {4}% ".format(moon[0],moon[1],moon[2],moon[3],int(moon[4]*100))
+        moon_str = "Moon - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2} \t Alt: {3} \t Phase: {4}% ".format(moon[0],moon[1],moon[2],moon[3],int(moon[4]*100))
         if MOON_FLAG:
             moon_str = moon_str + "\tMOON IS UP!"
             self.change_color(self.moon_schedule, "red")
