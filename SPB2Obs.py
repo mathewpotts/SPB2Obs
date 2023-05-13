@@ -305,8 +305,16 @@ class SPB2Obs:
         return NGC
 
     def create_ephem_object(self,in_obj):
-        #ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
-        ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + in_obj[2]+','+in_obj[3]+','+in_obj[4]#str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
+        # Convert RA to HMS
+        ra_angle = ephem.degrees(math.radians(float(in_obj[2])))
+        ra_hms = str(ephem.hours(ra_angle))
+
+        # Convert Dec to DMS
+        dec_dms = str(ephem.degrees(math.radians(float(in_obj[3]))))
+        
+        
+        ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + ra_hms + ',' + dec_dms + ',' + in_obj[4] #supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
+        print(ngc_xephem_format)
         return ephem.readdb(ngc_xephem_format)
 
     def check_sun_and_moon(self, utctime):
@@ -568,7 +576,7 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 1100)) # time travel
+        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) - 4300)) # time travel
         current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
