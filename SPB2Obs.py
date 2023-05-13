@@ -81,7 +81,6 @@ class SPB2Obs:
         headingAng = float(balloon.split(' @ ')[0].replace('Knots',''))
         velocity = float(balloon.split(' @ ')[1].replace('\u00b0', ''))
         headingAngCal = math.radians(90-headingAng)
-        #dt =  self.dt_srise * 3600 #sec
         velocity = velocity * 0.51444 # m/s
         elevation = elevation * 0.3048 # m
         b = (velocity * dt)/(ephem.earth_radius+elevation)
@@ -306,8 +305,8 @@ class SPB2Obs:
         return NGC
 
     def create_ephem_object(self,in_obj):
-        ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
-        ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
+        #ngc_eq = ephem.Equatorial(ephem.Galactic(in_obj[2], in_obj[3], epoch = ephem.J2000), epoch = ephem.J2000) #converting to equatorial
+        ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + in_obj[2]+','+in_obj[3]+','+in_obj[4]#str(ngc_eq.ra) + ',' + str(ngc_eq.dec) + ',' + in_obj[4]#supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
         return ephem.readdb(ngc_xephem_format)
 
     def check_sun_and_moon(self, utctime):
@@ -364,6 +363,7 @@ class SPB2Obs:
             moon_set = self.obs.next_setting(self.m) # moon rise at defined horizon
             self.dt_mset = abs(ephem.Date(utctime) - moon_set) * 24 # convert to hours
             # get moon rise time using predicted location
+            self.PreObs.horizon = self.obs.horizon # reset horizon for predicted observer
             self.PreObs.lat = math.radians(preLat_rise)
             self.PreObs.long = math.radians(preLong_rise)
             print("\n\nPredicted rise: {0} {1} \n\nPredicted set: {2} {3}".format(preLat_rise,preLong_rise,preLat_set,preLong_set),self.PreObs)
@@ -511,7 +511,7 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        self.proj_traj = tk.Label(self.master, text="Projected Trajectory - Balloon Velocity: \t\t Predicted Sunrise Latitude: \t\t Predicted Sunrise Longitude:\n", font=("Arial",12))
+        self.proj_traj = tk.Label(self.master, text="Trajectory - \t\n", font=("Arial",12))
         self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
@@ -580,9 +580,9 @@ class SAM:
         print("\n\n",SUN_OFFSET)
 
         # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
-        if int(time.strftime("%S")) == 0:
-            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
-            b.start()
+        #if int(time.strftime("%S")) == 0:
+        #    b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
+        #    b.start()
 
         self.check_alert(current_time)
 
@@ -610,7 +610,7 @@ class SAM:
         self.update_proj_traj()
 
     def update_proj_traj(self):
-        proj_traj = "Projected Trajectory - Balloon Velocity: {0} \t Predicted Sunrise Latitude: {1:.4f}\u00b0\t Predicted Sunrise Longitude: {2:.4f}\u00b0\n".format(*self.observer.balloondirection)
+        proj_traj = "Trajectory - {0}\n".format(*self.observer.balloondirection)
         self.proj_traj.config(text=proj_traj)
 
     def update_horizons(self):
@@ -654,9 +654,9 @@ class SAM:
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
         if float(dt_sun[0]) < 0.25 and float(dt_sun[0]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "{0} Alert: Sun is rising over the limb + {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
+            sun_alert = "{0} Alert: Sun is rising over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
         elif float(dt_sun[1]) < 0.25 and float(dt_sun[1]) > 0.249722222: # if dt at 15 mins
-            sun_alert = "{0} Alert: Sun is setting over the limb + {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
+            sun_alert = "{0} Alert: Sun is setting over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
         elif float(dt_moon[0]) < 0.25 and float(dt_moon[0]) > 0.249722222: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is rising over the limb in 15 minutes!".format(current_time)
         elif float(dt_moon[1]) < 0.25 and float(dt_moon[1]) > 0.249722222: # if dt at 15 mins
