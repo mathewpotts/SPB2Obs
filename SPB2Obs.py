@@ -588,9 +588,9 @@ class SAM:
         print("\n\n",SUN_OFFSET)
 
         # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
-        #if int(time.strftime("%S")) == 0:
-        #    b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
-        #    b.start()
+        if int(time.strftime("%S")) == 0:
+            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
+            b.start()
 
         self.check_alert(current_time)
 
