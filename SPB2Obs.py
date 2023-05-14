@@ -478,9 +478,9 @@ class SPB2Obs:
                         mag = "1.0"                                         # dummy magnitude
                         in_obj = [name,obj_type,ra,dec,mag]
                         # Check objects if it has updated its position, if so delete it 
-                        for i,ob in enumerate(self.ephem_objarray):
-                            if name in self.ob.name:
-                                self.ephem_objarray.remove(obj) # remove object
+                        #for i,ob in enumerate(self.ephem_objarray):
+                        #    if name in self.ob.name:
+                        #        self.ephem_objarray.remove(obj) # remove object
                         obj = self.create_ephem_object(in_obj) # create an ephem object
                         self.GCN_str = str(value) # output alert to string so it can alert user
                         print(self.GCN_str)
