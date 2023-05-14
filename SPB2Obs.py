@@ -166,12 +166,6 @@ class SPB2Obs:
     def GCN_alert(self):
         return self.GCN_str
 
-    def rad2degHMS(self, alpha):
-        D = int(alpha * (180/math.pi))
-        M = int((alpha * (180/math.pi) - D) * 60)
-        S = ((alpha * (180/math.pi) - D) * 60 - M) * 60
-        return "{0}:{1}:{2:.2f}".format(D,abs(M),abs(S))
-
     def check_fov(self, utctime):
         sources = []
         self.obs.date = utctime
@@ -465,11 +459,6 @@ class SPB2Obs:
                             trig_entry = [match for match in alert if "EVENT_NUM" in match]
                         trig = re.search(r'\d+',trig_entry[0]).group() # trigger number of notice
                         name = type + " " + trig # concatinate name/type to in case of updates
-                        # Edit the xephem object to update its position
-                        #for obj in self.ephem_objarray:
-                        #    if name in self.obj.name:
-                        #        obj._ra =
-                        #        obj._dec
                         obj_type = "f|G" # dummy type
                         if ("Fermi" or "Swift") in type:
                             ra_entry = [match for match in alert if "GRB_RA" in match]
@@ -481,6 +470,10 @@ class SPB2Obs:
                         dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
                         mag = "1.0"                                         # dummy magnitude
                         in_obj = [name,obj_type,ra,dec,mag]
+                        # Check objects if it has updated its position, if so delete it 
+                        for i,ob in enumerate(self.ephem_objarray):
+                            if name in self.ob.name:
+                                self.ephem_objarray.remove(obj) # remove object
                         obj = self.create_ephem_object(in_obj) # create an ephem object
                         self.GCN_str = str(value) # output alert to string so it can alert user
                         print(self.GCN_str)
