@@ -43,7 +43,7 @@ def read_in_args():
 
 def GUI(args):
     root = tk.Tk()
-    root.geometry("1550x500") # set default window size
+    root.geometry("1300x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
 
@@ -556,7 +556,7 @@ class SAM:
         # Create a listbox widget and populate it with the sources
         self.listbox = tk.Listbox(self.master,font="TkFixedFont")
         for sourcerow in self.sources:
-            row = "{: >20} {: >20} {: >20} {: >20} {: >20} {: >20} {: >20}".format(*sourcerow)
+            row = "{: >20} {: >10} {: >10} {: >15} {: >20} {: >15} {: >20}".format(*sourcerow)
             self.listbox.insert(tk.END, row)
 
         # Create a scrollbar for the listbox
@@ -646,7 +646,7 @@ class SAM:
         self.sources = sources
         self.listbox.delete(2,self.listbox.size()) # Clear old list
         for source in self.sources:
-            row = "{: >20} {: >20} {: >20} {: >20} {: >20} {: >20} {: >20}".format(*source.split(','))
+            row = "{: >20} {: >10} {: >10} {: >15} {: >20} {: >15} {: >20}".format(*source.split(','))
             print(row)
             self.listbox.insert(tk.END, row)
 
