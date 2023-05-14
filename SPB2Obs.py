@@ -77,6 +77,13 @@ class SPB2Obs:
         # init wind
         self.balloondir = "0 Knots @ 0\u00b0"
 
+    def DMS2Deg(self,DMS):
+        degrees = int(DMS.split(':')[0])
+        minutes = int(DMS.split(':')[1])
+        seconds = float(DMS.split(':')[2])
+        decimal_degrees = degrees + (minutes / 60) + (seconds / 3600)
+        return round(decimal_degrees, 1)
+
     def payloadDrift(self,initLat, initLon, balloon, dt, elevation):
         headingAng = float(balloon.split(' @ ')[0].replace('Knots',''))
         velocity = float(balloon.split(' @ ')[1].replace('\u00b0', ''))
@@ -224,7 +231,7 @@ class SPB2Obs:
                         upper_set = pre_upper_set
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,az,alt,str(upper_set_az),str(upper_set),str(lower_set_az),str(lower_set))
+                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(upper_set_az)),str(upper_set),self.DMS2Deg(str(lower_set_az)),str(lower_set))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first... maybe
@@ -239,7 +246,7 @@ class SPB2Obs:
                         lower_rise = pre_lower_rise
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,az,alt,str(lower_rise_az),str(lower_rise),str(upper_rise_az),str(upper_rise))
+                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(lower_rise_az)),str(lower_rise),self.DMS2Deg(str(upper_rise_az)),str(upper_rise))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
         except ephem.AlwaysUpError:
