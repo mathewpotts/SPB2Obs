@@ -531,8 +531,9 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        self.proj_traj = tk.Label(self.master, text="Trajectory - \t\n", font=("Arial",12))
-        self.proj_traj.pack(side=tk.TOP, anchor="w")
+        if self.updateLoc:
+            self.proj_traj = tk.Label(self.master, text="Trajectory - \t\n", font=("Arial",12))
+            self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
         horizon = "Horizon -   Limb: {0:.4f}\u00b0         Upper FoV: {1:.4f}\u00b0         Lower FoV: {2:.4f}\u00b0\n".format(*self.observer.horizon)
