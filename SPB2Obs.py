@@ -674,13 +674,13 @@ class SAM:
         moon_alert = None
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
-        if float(dt_sun[0].split(':')[1]) == 15 and float(dt_sun[0].split(':')[2]) == 0: # if dt at 15 mins
+        if float(dt_sun[0].split(':')[0]) == 0 and float(dt_sun[0].split(':')[1]) == 15 and float(dt_sun[0].split(':')[2]) == 0: # if dt at 15 mins
             sun_alert = "{0} Alert: Sun is rising over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
-        elif float(dt_sun[1].split(':')[1]) == 15 and float(dt_sun[1].split(':')[2]) == 0: # if dt at 15 mins
+        elif float(dt_sun[0].split(':')[0]) == 0 and float(dt_sun[1].split(':')[1]) == 15 and float(dt_sun[1].split(':')[2]) == 0: # if dt at 15 mins
             sun_alert = "{0} Alert: Sun is setting over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
-        elif float(dt_moon[0].split(':')[1]) == 15 and float(dt_moon[0].split(':')[2]) == 0: # if dt at 15 mins
+        elif float(dt_moon[0].split(':')[0]) == 0 and float(dt_moon[0].split(':')[1]) == 15 and float(dt_moon[0].split(':')[2]) == 0: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is rising over the limb in 15 minutes!".format(current_time)
-        elif float(dt_moon[1].split(':')[1]) == 15 and float(dt_moon[1].split(':')[2]) == 0: # if dt at 15 mins
+        elif float(dt_moon[0].split(':')[0]) == 0 and float(dt_moon[1].split(':')[1]) == 15 and float(dt_moon[1].split(':')[2]) == 0: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is setting over the limb in 15 minutes!".format(current_time)
         if sun_alert:
             self.make_alert_win(sun_alert)
