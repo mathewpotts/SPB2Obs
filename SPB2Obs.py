@@ -30,14 +30,12 @@ MOON_FLAG = False
 # Init alert flags for GCN alert
 GCN_FLAG = False
 
-# Allows the use of greek letters
-
-
 # Read in args
 def read_in_args():
     parser = argparse.ArgumentParser(description = 'SPB2Obs shows Objects of Interest (OoI) in the FoV of the CT telescope displaying the azimuth and altitude of those objects. SPB2Obs incorporates live alerts of Gamma-Ray Bursts (GRBs) from the General Coordinates Network (GCN).')
     parser.add_argument('-obj', metavar='objFile',action='store',help='Path to file containing OoI.')
-    parser.add_argument('-loc', metavar='locFile',action='store',help='Path to file containing the current GPS location of SPB2 and time.')
+    parser.add_argument('-loc', metavar='locFile',action='store',help='Path to file containing the current GPS location of observatory and time.')
+    parser.add_argument('-balloon',action='store_true',default = False, help='Update the gps location of the observatory using the NASA CSBF site.')
     args = parser.parse_args()
     return args
 
@@ -236,7 +234,7 @@ class SPB2Obs:
                         upper_set = pre_upper_set
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(upper_set_az)),str(upper_set),self.DMS2Deg(str(lower_set_az)),str(lower_set))
+                gui_str = "{0},{1}\u00b0,{2}\u00b0,{3}\u00b0,{4},{5}\u00b0,{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(upper_set_az)),str(upper_set),self.DMS2Deg(str(lower_set_az)),str(lower_set))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
             else: # if source is rising first... maybe
@@ -251,7 +249,7 @@ class SPB2Obs:
                         lower_rise = pre_lower_rise
                 else:
                     inFOV = False
-                gui_str = "{0},{1},{2},{3},{4},{5},{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(lower_rise_az)),str(lower_rise),self.DMS2Deg(str(upper_rise_az)),str(upper_rise))
+                gui_str = "{0},{1}\u00b0,{2}\u00b0,{3}\u00b0,{4},{5}\u00b0,{6}".format(ephem_obj.name,self.DMS2Deg(str(az)),self.DMS2Deg(str(alt)),self.DMS2Deg(str(lower_rise_az)),str(lower_rise),self.DMS2Deg(str(upper_rise_az)),str(upper_rise))
                 print(gui_str, inFOV)
                 return [gui_str, inFOV]
         except ephem.AlwaysUpError:
@@ -365,8 +363,8 @@ class SPB2Obs:
             sun_rise = 'N/A\t\t'
             sun_set = 'N/A\t\t'
         self.s.compute(self.obs) # compute the location of the sun relative to observer
-        sun = [sun_rise,sun_set,self.s.az,self.s.alt]
-        dt_sun = [self.dt_srise,self.dt_sset]
+        sun = [sun_rise,sun_set,self.DMS2Deg(str(self.s.az)),self.DMS2Deg(str(self.s.alt))]
+        dt_sun = [self.Hrs2HM(self.dt_srise),self.Hrs2HM(self.dt_sset)]
         # Checking moon position
         moon = []
         self.obs.horizon = self.default_horizon # reset horizon back to default for moon calculation
@@ -397,9 +395,15 @@ class SPB2Obs:
             moon_rise = 'N/A\t\t'
             moon_set = 'N/A\t\t'
         self.m.compute(self.obs) # compute the location of the moon relative to observer
-        moon = [moon_rise,moon_set,self.m.az,self.m.alt,self.m.moon_phase]
-        dt_moon = [self.dt_mrise,self.dt_mset]
+        moon = [moon_rise,moon_set,self.DMS2Deg(str(self.m.az)),self.DMS2Deg(str(self.m.alt)),self.m.moon_phase]
+        dt_moon = [self.Hrs2HM(self.dt_mrise),self.Hrs2HM(self.dt_mset)]
         return sun,moon,dt_sun,dt_moon
+
+    def Hrs2HM(self, t):
+        hours = int(t)
+        mins  = int((t - hours) * 60)
+        secs  = int(((t - hours) - mins/60)*3600)
+        return "{0}:{1}:{2}".format(hours,str(mins).rjust(2,'0'),str(secs).rjust(2,'0'))
 
     def gcn_alerts(self):
         # Typical GCN alert
@@ -504,6 +508,9 @@ class SAM:
         # Get initial source list
         self.observer = SPB2Obs(args)
 
+        # Update Location using CSBF
+        self.updateLoc = args.balloon
+
         # Start GCN alerts check in the background
         b = threading.Thread(name='gcn_alerts', target = self.observer.gcn_alerts) # run GCN alerts in background
         b.start()
@@ -581,8 +588,8 @@ class SAM:
 
     def update_time(self):
         # Get the current time and format it as a string
-        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 37800)) # time travel
-        #urrent_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
+        #current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(calendar.timegm(time.gmtime()) + 37800)) # time travel
+        current_time = time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime()) # in UTC
 
         # Update the time label
         self.time_label.config(text="Current Time: " + current_time + "Z\n")
@@ -593,9 +600,9 @@ class SAM:
         print("\n\n",SUN_OFFSET)
 
         # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
-        #if int(time.strftime("%S")) == 0:
-        #    b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
-        #    b.start()
+        if int(time.strftime("%S")) == 0 and self.updateLoc:
+            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
+            b.start()
 
         self.check_alert(current_time)
 
@@ -666,13 +673,13 @@ class SAM:
         moon_alert = None
 
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time)
-        if float(dt_sun[0]) < 0.25 and float(dt_sun[0]) > 0.249722222: # if dt at 15 mins
+        if float(dt_sun[0].split(':')[1]) <= 15 and float(dt_sun[0].split(':')[1]) > 14.99: # if dt at 15 mins
             sun_alert = "{0} Alert: Sun is rising over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
-        elif float(dt_sun[1]) < 0.25 and float(dt_sun[1]) > 0.249722222: # if dt at 15 mins
+        elif float(dt_sun[1].split(':')[1]) <= 15 and float(dt_sun[1].split(':')[1]) > 14.99: # if dt at 15 mins
             sun_alert = "{0} Alert: Sun is setting over the limb - {1}\u00b0 in 15 minutes!".format(current_time,SUN_OFFSET)
-        elif float(dt_moon[0]) < 0.25 and float(dt_moon[0]) > 0.249722222: # if dt at 15 mins
+        elif float(dt_moon[0].split(':')[1]) <= 15 and float(dt_moon[0].split(':')[1]) > 14.99: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is rising over the limb in 15 minutes!".format(current_time)
-        elif float(dt_moon[1]) < 0.25 and float(dt_moon[1]) > 0.249722222: # if dt at 15 mins
+        elif float(dt_moon[1].split(':')[1]) <= 15 and float(dt_moon[1].split(':')[1]) > 14.99: # if dt at 15 mins
             moon_alert = "{0} Alert: Moon is setting over the limb in 15 minutes!".format(current_time)
         if sun_alert:
             self.make_alert_win(sun_alert)
@@ -700,28 +707,28 @@ class SAM:
 
     def check_sun_and_moon(self, current_time):
         sun,moon,dt_sun,dt_moon = self.observer.check_sun_and_moon(current_time) # need to change this so that it utilizes predicted location
-        sun_str = "Sun - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2} \t Alt: {3} ".format(sun[0], sun[1],sun[2],sun[3])
+        sun_str = "Sun - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2}\u00b0 \t\t Alt: {3}\u00b0".format(sun[0], sun[1],sun[2],sun[3])
         if SUN_FLAG:
-            sun_str = sun_str + "\t\t\tSUN IS UP!"
+            sun_str = sun_str + "\t\t\t\tSUN IS UP!"
             self.change_color(self.sun_schedule, "red")
         else:
             self.change_color(self.sun_schedule, "black")
         self.sun_schedule.config(text=sun_str)
-        dt_sun_str = "     \t \u0394t to sunrise: {0:.2f} hr\t \u0394t to sunset: {1:.2f} hr".format(*dt_sun)
+        dt_sun_str = "     \t \u0394t to sunrise: {0} \t \u0394t to sunset: {1} ".format(*dt_sun)
         self.dt_sun.config(text=dt_sun_str)
-        moon_str = "Moon - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2} \t Alt: {3} \t Phase: {4}% ".format(moon[0],moon[1],moon[2],moon[3],int(moon[4]*100))
+        moon_str = "Moon - \t Rise: {0}Z \t Set: {1}Z \t Azi: {2}\u00b0\t\t Alt: {3}\u00b0\t\t Phase: {4}% ".format(moon[0],moon[1],moon[2],moon[3],int(moon[4]*100))
         if MOON_FLAG:
             moon_str = moon_str + "\tMOON IS UP!"
             self.change_color(self.moon_schedule, "red")
         else:
             self.change_color(self.moon_schedule, "black")
         self.moon_schedule.config(text=moon_str)
-        dt_moon_str = "     \t \u0394t to moonrise: {0:.2f} hr\t \u0394t to moonset: {1:.2f} hr".format(*dt_moon)
+        dt_moon_str = "     \t \u0394t to moonrise: {0} \t \u0394t to moonset: {1}".format(*dt_moon)
         self.dt_moon.config(text=dt_moon_str)
 
 
 if __name__ == '__main__':
     args = read_in_args() # read in user input arguments
-
+    
     # Open the GUI
     GUI(args)
