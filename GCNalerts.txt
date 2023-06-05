@@ -926,3 +926,7 @@ COMMENTS:        The LC_URL file should be available by the time this FINAL noti
 COMMENTS:        This notice has human-in-the-loop processing.  
 
 --------
+FindCoordinator response error: Local: Host resolution failure
+--------
+FindCoordinator response error: Local: Host resolution failure
+--------

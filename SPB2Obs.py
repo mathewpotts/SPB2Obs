@@ -69,7 +69,7 @@ class SPB2Obs:
         # Flight location Equatorial
         #self.url = "https://www.csbf.nasa.gov/map/balloon10/flight728NT.htm" # SuperBit
         self.url = "https://www.csbf.nasa.gov/map/balloon8/flight729NT.htm" # SPB2
-        
+
         # Init masks
         self.s = ephem.Sun() #make Sun
         self.m = ephem.Moon() #make Moon
@@ -317,8 +317,8 @@ class SPB2Obs:
 
         # Convert Dec to DMS
         dec_dms = str(ephem.degrees(math.radians(float(in_obj[3]))))
-        
-        
+
+
         ngc_xephem_format = in_obj[0] + ',' + in_obj[1] + ',' + ra_hms + ',' + dec_dms + ',' + in_obj[4] #supplying fixed coord data in xephem format (https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642)
         print(ngc_xephem_format)
         return ephem.readdb(ngc_xephem_format)
@@ -464,7 +464,7 @@ class SPB2Obs:
                     # create a ephem object
                     alert = value.split('\n')
                     type_entry = [match for match in alert if "NOTICE_TYPE" in match]
-                    type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1).split()[0] #notice type 
+                    type = re.search(r'NOTICE_TYPE:\s*(.*)',type_entry[0]).group(1).split()[0] #notice type
                     if ("Fermi" or "Swift") in type:
                         trig_entry = [match for match in alert if "TRIGGER_NUM" in match]
                     else:
@@ -482,7 +482,7 @@ class SPB2Obs:
                     dec = re.search(r'\d+.\d+', dec_entry[0]).group()       # find J2000 DEC
                     mag = "1.0"                                         # dummy magnitude
                     in_obj = [name,obj_type,ra,dec,mag]
-                    # Check objects if it has updated its position, if so delete it 
+                    # Check objects if it has updated its position, if so delete it
                     #for i,ob in enumerate(self.ephem_objarray):
                     #    if name in self.ob.name:
                     #        self.ephem_objarray.remove(ob) # remove object
