@@ -15,12 +15,15 @@ Coordinates Network (GCN).
 optional arguments:
   -h, --help    show this help message and exit
   -obj objFile  Path to file containing OoI.
-  -loc locFile  Path to file containing the current GPS location of SPB2 and time.
+  -loc locFile  Path to file containing the current GPS location of observatory and time.
+  -balloon      Update the gps location of the observatory using the NASA CSBF site.
+
 ```
 The typical usage of the script looks like this. Where the `input0.txt` file contains all the OoI and the `gpsLocation.txt` file is just a starting position that is later updated to the position of the balloon given by NASA.
 ```
-./SPB2Obs.py -obj input0.txt -loc gpsLocation.txt
+./SPB2Obs.py -obj input0.txt -loc gpsLocation.txt -balloon
 ```
+If you want to run SAM with a stationary observatory omit the `-balloon` flag and it will only use the gps coordinates that are provided in the gpsLocation file.
 
 ## Adding OoI to Object File
 The object input file named, `input0.txt`, is formated using the Xephem format found [here](https://xephem.github.io/XEphem/Site/help/xephem.html#mozTocId800642). The basics are descriped below. You need to create a string that has the following information: 
