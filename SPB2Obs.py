@@ -61,6 +61,9 @@ class SPB2Obs:
         # init elevation of balllon
         self.elevation = args.elv
 
+        # init balloon bool. Are we using a mobile balloon or something else
+        self.balloon = args.balloon
+
         # Set init observer
         self.obs = ephem.Observer() #make observer
         self.gpsLoc = self.read_file(args.loc) #read in gps location
