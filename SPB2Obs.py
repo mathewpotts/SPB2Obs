@@ -13,8 +13,9 @@ import tkinter as tk
 from PIL import Image, ImageTk
 import time
 import calendar
-import threading
+import multiprocessing
 import re
+import os
 import requests
 from bs4 import BeautifulSoup
 
@@ -29,6 +30,8 @@ MOON_FLAG = False
 
 # Init alert flags for GCN alert
 GCN_FLAG = False
+GCN_log_loc = os.path.dirname(os.path.abspath(__file__)) + "/GCNalerts.txt"
+print(GCN_log_loc)
 
 # Read in args
 def read_in_args():
@@ -45,6 +48,9 @@ def GUI(args):
     root.geometry("1300x500") # set default window size
     app = SAM(root,args)
     root.mainloop()
+    # Terminate the background GCN process
+    b.terminate()
+    b.join()# wait for process to complete
 
 # Define class to observer
 class SPB2Obs:
@@ -459,7 +465,7 @@ class SPB2Obs:
                             'gcn.classic.text.SWIFT_BAT_GRB_POS_ACK'])
         global GCN_FLAG
         while True:
-            with open('GCNalerts.txt','a') as f:
+            with open(f'{GCN_log_loc}','a') as f:
                 for message in consumer.consume(timeout=1):
                     GCN_FLAG = True
                     value = message.value().decode('ASCII')
@@ -513,7 +519,8 @@ class SAM:
         self.updateLoc = args.balloon
 
         # Start GCN alerts check in the background
-        b = threading.Thread(name='gcn_alerts', target = self.observer.gcn_alerts) # run GCN alerts in background
+        global b
+        b = multiprocessing.Process(target = self.observer.gcn_alerts) # run GCN alerts in background
         b.start()
 
         self.sources = [
