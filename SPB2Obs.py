@@ -169,6 +169,7 @@ class SPB2Obs:
 
     @property
     def gps_loc(self):
+        print(float(self.elevation))
         return [self.obs.date,self.obs.lat,self.obs.long,float(self.elevation)]
 
     @property
@@ -295,8 +296,9 @@ class SPB2Obs:
         self.obs.lat = ls[1]
         self.obs.lon = ls[2]
         self.obs.elevation = 0 # the observer must be at sea level
-        if ls[3] != "0": # wait for the update from the web scrapper
-            self.elevation = float(ls[3])
+        if self.balloon: # only if in balloon mode
+            if ls[3] != "0": # wait for the update from the web scrapper
+                self.elevation = float(ls[3])
         self.horizons()
         self.obs.pressure = 0 # turn off refraction
         print(self.obs)
@@ -512,11 +514,14 @@ class SAM:
     def __init__(self, master,args):
         self.master = master
 
+        self.balloon = args.balloon # True if in balloon mode
+
         # Get initial source list
         self.observer = SPB2Obs(args)
 
         # Update Location using CSBF
-        self.updateLoc = args.balloon
+        if self.balloon: # only if in balloon mode
+            self.updateLoc = args.balloon
 
         # Start GCN alerts check in the background
         global b
@@ -539,9 +544,10 @@ class SAM:
         self.gps_loc.pack(side=tk.TOP, anchor="w")
 
         # Projected Flight trajectory
-        if self.updateLoc:
-            self.proj_traj = tk.Label(self.master, text="Trajectory - \t\n", font=("Arial",12))
-            self.proj_traj.pack(side=tk.TOP, anchor="w")
+        if self.balloon: # only if in balloon mode
+            if self.updateLoc:
+                self.proj_traj = tk.Label(self.master, text="Trajectory - \t\n", font=("Arial",12))
+                self.proj_traj.pack(side=tk.TOP, anchor="w")
 
         # Create a label for the horizon location
         horizon = "Horizon -   Limb: {0:.4f}\u00b0         Upper FoV: {1:.4f}\u00b0         Lower FoV: {2:.4f}\u00b0\n".format(*self.observer.horizon)
@@ -609,9 +615,10 @@ class SAM:
         print("\n\n",SUN_OFFSET)
 
         # Every 60 seconds start a thread that start another thread for web scrapping, waits, updates predictions
-        if int(time.strftime("%S")) == 0 and self.updateLoc:
-            b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
-            b.start()
+        if self.balloon:
+            if int(time.strftime("%S")) == 0 and self.updateLoc:
+                b = threading.Thread(name='update_GPS_Proj_Traj_Thread', target = self.update_GPS_Proj_Traj_Thread)
+                b.start()
 
         self.check_alert(current_time)
 
