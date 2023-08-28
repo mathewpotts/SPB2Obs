@@ -35,6 +35,7 @@ def read_in_args():
     parser = argparse.ArgumentParser(description = 'SPB2Obs shows Objects of Interest (OoI) in the FoV of the CT telescope displaying the azimuth and altitude of those objects. SPB2Obs incorporates live alerts of Gamma-Ray Bursts (GRBs) from the General Coordinates Network (GCN).')
     parser.add_argument('-obj', metavar='objFile',action='store',help='Path to file containing OoI.')
     parser.add_argument('-loc', metavar='locFile',action='store',help='Path to file containing the current GPS location of observatory and time.')
+    parser.add_argument('-elv', metavar='Elevation',action='store',type=float,default=35000,help='Elevation of telescope in meters. Defaults to 35000 m.')
     parser.add_argument('-balloon',action='store_true',default = False, help='Update the gps location of the observatory using the NASA CSBF site.')
     args = parser.parse_args()
     return args
@@ -52,7 +53,7 @@ class SPB2Obs:
         self.ephem_objarray = self.ephem_object_array() # Create Ephem objects
 
         # init elevation of balllon
-        self.elevation = 35000
+        self.elevation = args.elv
 
         # Set init observer
         self.obs = ephem.Observer() #make observer
